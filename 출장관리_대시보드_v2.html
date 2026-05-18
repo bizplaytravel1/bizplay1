@@ -28,7 +28,7 @@
   messagingSenderId: "613513178796",
   appId: "1:613513178796:web:5ab1a91a0a2101513e7909",
   measurementId: "G-Z6K3LN8054"
-};
+}
   // ══════════════════════════════════════════════════
 
   let db = null;
@@ -1250,8 +1250,8 @@
         </div>
         <div class="stat-card green">
           <div class="stat-label"><span class="stat-dot green"></span>참여 기업체</div>
-          <div class="stat-value">5개사</div>
-          <div class="stat-sub">포스코DX 외 4개사</div>
+          <div class="stat-value" id="statCompanyCount">5개사</div>
+          <div class="stat-sub" id="statCompanySub">포스코DX 외 4개사</div>
         </div>
         <div class="stat-card purple">
           <div class="stat-label"><span class="stat-dot purple"></span>공급사</div>
@@ -1645,7 +1645,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr>
+              <tr id="isTableHead">
                 <th>년월</th><th>카테고리</th><th>공급사</th>
                 <th>포스코DX</th><th>세아창원특수강</th><th>현대자동차</th>
                 <th>기아복지몰</th><th>기아 여가선용몰</th><th>합계</th><th></th>
@@ -1754,7 +1754,7 @@
         <div class="table-wrap">
           <table id="supplierTable">
             <thead>
-              <tr>
+              <tr id="supplierTableHead">
                 <th>년월</th><th>카테고리</th><th>공급사</th>
                 <th>포스코DX</th><th>세아창원특수강</th><th>현대자동차</th>
                 <th>기아복지몰</th><th>기아 여가선용몰</th><th>합계</th><th>관리</th>
@@ -1809,9 +1809,15 @@
 
       <!-- 인보이스 기업체 데이터 목록 -->
       <div class="card" style="margin-bottom:16px">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title">🏢 기업체별 정산 데이터 목록</div>
-          <span id="invCompanyCount" class="badge badge-blue">0건</span>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+            <label style="font-size:11px;color:var(--muted);font-weight:600">기업체:</label>
+            <select id="inv-comp-filter" class="form-select" style="width:160px;padding:5px 9px;font-size:11px" onchange="renderInvoice()">
+              <option value="all">전체</option>
+            </select>
+            <span id="invCompanyCount" class="badge badge-blue">0건</span>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -1829,14 +1835,24 @@
 
       <!-- 인보이스 공급사 데이터 목록 -->
       <div class="card" style="margin-bottom:16px">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title">🏭 공급사별 데이터 목록</div>
-          <span id="invSupplierCount" class="badge badge-cyan">0건</span>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap">
+            <label style="font-size:11px;color:var(--muted);font-weight:600">카테고리:</label>
+            <select id="inv-sup-cat-filter" class="form-select" style="width:110px;padding:5px 9px;font-size:11px" onchange="renderInvoice()">
+              <option value="all">전체</option>
+            </select>
+            <label style="font-size:11px;color:var(--muted);font-weight:600">공급사:</label>
+            <select id="inv-sup-filter" class="form-select" style="width:160px;padding:5px 9px;font-size:11px" onchange="renderInvoice()">
+              <option value="all">전체</option>
+            </select>
+            <span id="invSupplierCount" class="badge badge-cyan">0건</span>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr>
+              <tr id="invSupplierHead">
                 <th>카테고리</th><th>공급사</th>
                 <th>포스코DX</th><th>세아창원특수강</th><th>현대자동차</th>
                 <th>기아복지몰</th><th>기아 여가선용몰</th><th>합계</th><th>관리</th>
@@ -1854,7 +1870,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr>
+              <tr id="invoiceTableHead">
                 <th>구분</th>
                 <th>포스코DX<br><small style="color:var(--muted);font-weight:400">정산</small></th>
                 <th>세아창원특수강<br><small style="color:var(--muted);font-weight:400">정산</small></th>
@@ -2276,26 +2292,8 @@
             <option>KTX</option><option>카카오T</option><option>노랑풍선(비자)</option><option>기타</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">포스코DX (원)</label>
-          <input type="number" class="form-input amount" id="edit-is-posco" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">세아창원특수강 (원)</label>
-          <input type="number" class="form-input amount" id="edit-is-seah" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">현대자동차 (원)</label>
-          <input type="number" class="form-input amount" id="edit-is-hyundai" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">기아복지몰 (원)</label>
-          <input type="number" class="form-input amount" id="edit-is-kia" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">기아 여가선용몰 (원)</label>
-          <input type="number" class="form-input amount" id="edit-is-kia2" placeholder="0">
-        </div>
+        <!-- 기업체별 금액 input들 — masterCompanies 기준 동적 생성 -->
+        <div id="edit-is-companies" style="display:contents"></div>
       </div>
       <div class="form-group" style="margin-top:4px">
         <label class="form-label" style="color:var(--warning)">✏️ 수정 사유 <span style="color:var(--muted);font-weight:400">(선택)</span></label>
@@ -2844,6 +2842,14 @@ function refreshAllCategoryDropdowns() {
     const cur = sel.value;
     sel.innerHTML = masterCategories.map(c => `<option${c === cur ? ' selected' : ''}>${c}</option>`).join('');
   });
+  // 인보이스 카테고리 필터 (전체 + 마스터 카테고리 목록)
+  const invSupCatFilter = document.getElementById('inv-sup-cat-filter');
+  if (invSupCatFilter) {
+    const cur = invSupCatFilter.value || 'all';
+    invSupCatFilter.innerHTML = '<option value="all">전체</option>'
+      + masterCategories.map(c => `<option${c === cur ? ' selected' : ''}>${c}</option>`).join('');
+    if (cur && (cur === 'all' || masterCategories.includes(cur))) invSupCatFilter.value = cur;
+  }
 }
 
 function refreshAllCompanyDropdowns() {
@@ -2873,6 +2879,74 @@ function refreshAllCompanyDropdowns() {
       + masterCompanies.map(n => `<option${n===cur?' selected':''}>${n}</option>`).join('');
     if (cur) rptSel.value = cur;
   }
+  // 인보이스 기업체 필터
+  const invCompFilter = document.getElementById('inv-comp-filter');
+  if (invCompFilter) {
+    const cur = invCompFilter.value || 'all';
+    invCompFilter.innerHTML = '<option value="all">전체</option>'
+      + masterCompanies.map(n => `<option${n===cur?' selected':''}>${n}</option>`).join('');
+    if (cur && (cur === 'all' || masterCompanies.includes(cur))) invCompFilter.value = cur;
+  }
+
+  // ── 공급사 편집 모달의 기업체별 금액 input들 동적 생성 ──
+  const editCompCont = document.getElementById('edit-is-companies');
+  if (editCompCont) {
+    editCompCont.innerHTML = masterCompanies.map(name => {
+      const id = 'edit-is-co-' + name.replace(/\s/g,'_');
+      return `<div class="form-group">
+        <label class="form-label">${name} (원)</label>
+        <input type="number" class="form-input amount" id="${id}" placeholder="0">
+      </div>`;
+    }).join('');
+  }
+
+  // ── 테이블 헤더 동적 갱신 ──
+  refreshCompanyTableHeaders();
+}
+
+// ── 모든 데이터 테이블 헤더의 기업체 컬럼을 masterCompanies 기준으로 동적 갱신
+function refreshCompanyTableHeaders() {
+  // 0) 종합 대시보드 상단 "참여 기업체" 카드
+  const statCount = document.getElementById('statCompanyCount');
+  const statSub   = document.getElementById('statCompanySub');
+  if (statCount) statCount.textContent = masterCompanies.length + '개사';
+  if (statSub) {
+    if (masterCompanies.length === 0) {
+      statSub.textContent = '등록된 기업체 없음';
+    } else if (masterCompanies.length === 1) {
+      statSub.textContent = masterCompanies[0];
+    } else {
+      statSub.textContent = masterCompanies[0] + ' 외 ' + (masterCompanies.length - 1) + '개사';
+    }
+  }
+  // 1) 공급사 입력 데이터 테이블 헤더 (년월/카테고리/공급사/[기업체들]/합계/관리없음)
+  const isHead = document.getElementById('isTableHead');
+  if (isHead) {
+    isHead.innerHTML = '<th>년월</th><th>카테고리</th><th>공급사</th>'
+      + masterCompanies.map(n => `<th>${escapeHtml(n)}</th>`).join('')
+      + '<th>합계</th><th></th>';
+  }
+  // 2) 공급사 현황 테이블 헤더 (년월/카테고리/공급사/[기업체들]/합계/관리)
+  const ssHead = document.getElementById('supplierTableHead');
+  if (ssHead) {
+    ssHead.innerHTML = '<th>년월</th><th>카테고리</th><th>공급사</th>'
+      + masterCompanies.map(n => `<th>${escapeHtml(n)}</th>`).join('')
+      + '<th>합계</th><th>관리</th>';
+  }
+  // 3) 인보이스 공급사 데이터 목록 헤더 (카테고리/공급사/[기업체들]/합계/관리)
+  const invSupHead = document.getElementById('invSupplierHead');
+  if (invSupHead) {
+    invSupHead.innerHTML = '<th>카테고리</th><th>공급사</th>'
+      + masterCompanies.map(n => `<th>${escapeHtml(n)}</th>`).join('')
+      + '<th>합계</th><th>관리</th>';
+  }
+  // 4) 인보이스 정산현황 집계 테이블 헤더 (구분/[기업체들+정산]/합계)
+  const invHead = document.getElementById('invoiceTableHead');
+  if (invHead) {
+    invHead.innerHTML = '<th>구분</th>'
+      + masterCompanies.map(n => `<th>${escapeHtml(n)}<br><small style="color:var(--muted);font-weight:400">정산</small></th>`).join('')
+      + '<th>합계</th>';
+  }
 }
 
 function refreshAllSupplierDropdowns() {
@@ -2883,6 +2957,14 @@ function refreshAllSupplierDropdowns() {
     const cur = sel.value;
     sel.innerHTML = masterSuppliers.map(s => `<option${s.name===cur?' selected':''}>${s.name}</option>`).join('');
   });
+  // 인보이스 공급사 필터 (전체 + 마스터 공급사 목록)
+  const invSupFilter = document.getElementById('inv-sup-filter');
+  if (invSupFilter) {
+    const cur = invSupFilter.value || 'all';
+    invSupFilter.innerHTML = '<option value="all">전체</option>'
+      + masterSuppliers.map(s => `<option${s.name===cur?' selected':''}>${s.name}</option>`).join('');
+    if (cur && (cur === 'all' || masterSuppliers.some(s => s.name === cur))) invSupFilter.value = cur;
+  }
 }
 
 function refreshSupplierCompanyAmounts() {
@@ -3590,13 +3672,16 @@ function initCharts() {
   ).join('');
 
   // ── 2. Company doughnut + 커스텀 오른쪽 범례 ──────────────────
-  const companies = ['포스코DX','세아창원특수강','현대자동차','기아복지몰','기아 여가선용몰'];
+  // ※ masterCompanies 사용 (마스터 변경 시 자동 반영). 색상 부족 시 반복 사용
+  const companies = [...masterCompanies];
+  const companyColorPool = ['#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b','#ef4444','#a78bfa','#f97316'];
+  const companyColors = companies.map((_, i) => companyColorPool[i % companyColorPool.length]);
   const compTotals = companies.map(c => allData.filter(r => r.company === c).reduce((s,r) => s + rowTotal(r, catKeys), 0));
   const compGrandTotal = compTotals.reduce((a,b) => a+b, 0);
 
   new Chart(document.getElementById('companyPieChart'), {
     type: 'doughnut', plugins: [DoughnutPctPlugin],
-    data: { labels: companies, datasets: [{ data: compTotals, backgroundColor: pieColors.company, borderColor:'#dde3eb', borderWidth:3, hoverOffset:8 }] },
+    data: { labels: companies, datasets: [{ data: compTotals, backgroundColor: companyColors, borderColor:'#dde3eb', borderWidth:3, hoverOffset:8 }] },
     options: { responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: ctx => `  ${ctx.label}: ${((ctx.raw/compGrandTotal)*100).toFixed(1)}%  (${ctx.raw.toLocaleString()}원)` } } }
@@ -3607,12 +3692,12 @@ function initCharts() {
     const val = compTotals[i];
     const pct = compGrandTotal ? ((val / compGrandTotal) * 100).toFixed(1) : '0.0';
     return `<div style="display:flex;align-items:center;gap:10px">
-      <div style="width:11px;height:11px;border-radius:3px;background:${pieColors.company[i]};flex-shrink:0"></div>
+      <div style="width:11px;height:11px;border-radius:3px;background:${companyColors[i]};flex-shrink:0"></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
         <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${val.toLocaleString()}원</div>
       </div>
-      <div style="font-family:var(--mono);font-size:14px;font-weight:800;color:${pieColors.company[i]};flex-shrink:0">${pct}%</div>
+      <div style="font-family:var(--mono);font-size:14px;font-weight:800;color:${companyColors[i]};flex-shrink:0">${pct}%</div>
     </div>`;
   }).join('');
 
@@ -4165,11 +4250,12 @@ function openEditSupplierFrom(src, idx) {
   document.getElementById('edit-is-month').value = r.month.replace('월','');
   document.getElementById('edit-is-category').value = r.category;
   document.getElementById('edit-is-supplier').value = r.supplier;
-  document.getElementById('edit-is-posco').value = r['포스코DX'] || '';
-  document.getElementById('edit-is-seah').value = r['세아창원특수강'] || '';
-  document.getElementById('edit-is-hyundai').value = r['현대자동차'] || '';
-  document.getElementById('edit-is-kia').value = r['기아복지몰'] || '';
-  document.getElementById('edit-is-kia2').value = r['기아 여가선용몰'] || '';
+  // ※ 기업체별 input은 masterCompanies 기준 동적 (id: edit-is-co-<name>)
+  masterCompanies.forEach(name => {
+    const id = 'edit-is-co-' + name.replace(/\s/g,'_');
+    const el = document.getElementById(id);
+    if (el) el.value = r[name] || '';
+  });
   openModal('editSupplierModal');
 }
 
@@ -4241,8 +4327,10 @@ function renderInvoice() {
     </div>
   `;
 
-  // ─ 기업체 목록 테이블 (※ 미정산 제외 — 정산+국책/조합만 노출)
-  const allCSettled = allC.filter(r => isPaid(r.settleType));
+  // ─ 기업체 목록 테이블 (※ 미정산 제외 — 정산+국책/조합만 노출 + 기업체 필터 적용)
+  const compFilter = document.getElementById('inv-comp-filter')?.value || 'all';
+  let allCSettled = allC.filter(r => isPaid(r.settleType));
+  if (compFilter !== 'all') allCSettled = allCSettled.filter(r => r.company === compFilter);
   document.getElementById('invCompanyCount').textContent = allCSettled.length + '건';
   document.getElementById('invCompanyBody').innerHTML = allCSettled.length ? allCSettled.map(r => {
     const total = rowTotal(r, catKeys);
@@ -4266,10 +4354,15 @@ function renderInvoice() {
     </tr>`;
   }).join('') : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">해당 월에 정산 데이터가 없습니다</td></tr>`;
 
-  // ─ 공급사 목록 테이블
+  // ─ 공급사 목록 테이블 (카테고리/공급사 필터 적용)
+  const supCatFilter = document.getElementById('inv-sup-cat-filter')?.value || 'all';
+  const supFilter    = document.getElementById('inv-sup-filter')?.value    || 'all';
+  let allSFiltered = allS;
+  if (supCatFilter !== 'all') allSFiltered = allSFiltered.filter(r => r.category === supCatFilter);
+  if (supFilter    !== 'all') allSFiltered = allSFiltered.filter(r => r.supplier === supFilter);
   const catColors = { '숙박':'badge-blue','항공':'badge-cyan','열차':'badge-purple','버스':'badge-green','택시':'badge-yellow','비자':'badge-red','렌터카':'badge-blue' };
-  document.getElementById('invSupplierCount').textContent = allS.length + '건';
-  document.getElementById('invSupplierBody').innerHTML = allS.length ? allS.map(r => {
+  document.getElementById('invSupplierCount').textContent = allSFiltered.length + '건';
+  document.getElementById('invSupplierBody').innerHTML = allSFiltered.length ? allSFiltered.map(r => {
     const total = getSuppKeys().reduce((s,k) => s + (r[k]||0), 0);
     return `<tr>
       <td><span class="badge ${catColors[r.category]||'badge-blue'}">${r.category}</span></td>
@@ -4283,11 +4376,11 @@ function renderInvoice() {
         </div>
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">해당 월 데이터가 없습니다</td></tr>`;
+  }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">해당 조건에 맞는 데이터가 없습니다</td></tr>`;
 
   // ─ 집계 테이블 (※ 미정산 제외 — 정산 + 국책/조합 통합 노출)
   const cats = ['숙박','항공','SRT','KTX','버스','택시','비자'];
-  const companies = ['포스코DX','세아창원특수강','현대자동차','기아복지몰','기아 여가선용몰'];
+  const companies = [...masterCompanies];  // ※ 마스터 변경 시 자동 반영
   const catMap = {};
   allC.filter(r => isPaid(r.settleType)).forEach(r => {
     cats.forEach(cat => {
@@ -4924,11 +5017,12 @@ function openEditSupplier(i) {
   document.getElementById('edit-is-month').value = r.month.replace('월','');
   document.getElementById('edit-is-category').value = r.category;
   document.getElementById('edit-is-supplier').value = r.supplier;
-  document.getElementById('edit-is-posco').value = r['포스코DX'] || '';
-  document.getElementById('edit-is-seah').value = r['세아창원특수강'] || '';
-  document.getElementById('edit-is-hyundai').value = r['현대자동차'] || '';
-  document.getElementById('edit-is-kia').value = r['기아복지몰'] || '';
-  document.getElementById('edit-is-kia2').value = r['기아 여가선용몰'] || '';
+  // ※ 기업체별 input은 masterCompanies 기준 동적 (id: edit-is-co-<name>)
+  masterCompanies.forEach(name => {
+    const id = 'edit-is-co-' + name.replace(/\s/g,'_');
+    const el = document.getElementById(id);
+    if (el) el.value = r[name] || '';
+  });
   openModal('editSupplierModal');
 }
 
@@ -4945,10 +5039,10 @@ function saveEditSupplier() {
     category: document.getElementById('edit-is-category').value,
     supplier: document.getElementById('edit-is-supplier').value,
   };
-  // 기업체별 금액 (id: edit-is-posco 등 기존 5개 + 동적 추가분)
-  const coFieldMap = { '포스코DX':'edit-is-posco','세아창원특수강':'edit-is-seah','현대자동차':'edit-is-hyundai','기아복지몰':'edit-is-kia','기아 여가선용몰':'edit-is-kia2' };
+  // 기업체별 금액 (masterCompanies 기준 동적 id: edit-is-co-<name>)
   masterCompanies.forEach(n => {
-    const el = document.getElementById(coFieldMap[n] || ('edit-is-co-' + n.replace(/\s/g,'_')));
+    const id = 'edit-is-co-' + n.replace(/\s/g,'_');
+    const el = document.getElementById(id);
     updated[n] = el ? (parseInt(el.value) || 0) : (before[n] || 0);
   });
 
