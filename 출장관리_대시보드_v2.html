@@ -1347,6 +1347,16 @@
                 <option value="11월">11월</option><option value="12월">12월</option>
               </select>
             </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <label style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">💰 정산구분</label>
+              <select id="rpt-settle" class="form-select" style="width:140px" onchange="renderCompanyReport()">
+                <option value="all">전체</option>
+                <option value="paid">정산 (전부)</option>
+                <option value="미정산">미정산</option>
+                <option value="국책/조합">국책/조합만</option>
+              </select>
+              <span style="font-size:10px;color:var(--muted);font-style:italic" title="공급사 인보이스 데이터에는 적용되지 않습니다">※ 기업 인보이스만</span>
+            </div>
             <div id="rpt-header-company" style="margin-left:auto;font-size:20px;font-weight:800;color:var(--accent)"></div>
           </div>
         </div>
@@ -3076,12 +3086,21 @@ function exportReportXLSX() {
   const company = document.getElementById('rpt-company')?.value || 'all';
   const year    = document.getElementById('rpt-year')?.value    || 'all';
   const month   = document.getElementById('rpt-month')?.value   || 'all';
+  const settle  = document.getElementById('rpt-settle')?.value  || 'all';
   // catKeys → 전역 masterCategories 참조
+
+  // 정산구분 필터 헬퍼 (기업 데이터에만 적용)
+  const passSettle = (r) => {
+    if (settle === 'all') return true;
+    if (settle === 'paid') return isPaid(r.settleType);
+    return r.settleType === settle;
+  };
 
   const allC = [...companyData, ...userCompanyData].filter(r =>
     (company === 'all' || r.company === company) &&
     (year    === 'all' || r.year    === year) &&
-    (month   === 'all' || r.month   === month)
+    (month   === 'all' || r.month   === month) &&
+    passSettle(r)
   );
   const allS = [...supplierData, ...userSupplierData].filter(r =>
     (year  === 'all' || r.year  === year) &&
@@ -3310,13 +3329,15 @@ function exportReportPDF() {
     renderCompanyReport();
 
     // 인쇄용 헤더 텍스트 채우기
-    const _rptComp  = document.getElementById('rpt-company')?.value  || 'all';
-    const _rptYear  = document.getElementById('rpt-year')?.value     || 'all';
-    const _rptMonth = document.getElementById('rpt-month')?.value    || 'all';
+    const _rptComp   = document.getElementById('rpt-company')?.value  || 'all';
+    const _rptYear   = document.getElementById('rpt-year')?.value     || 'all';
+    const _rptMonth  = document.getElementById('rpt-month')?.value    || 'all';
+    const _rptSettle = document.getElementById('rpt-settle')?.value   || 'all';
+    const _settleLabelMap = { 'all':'전체', 'paid':'정산 (전부)', '미정산':'미정산', '국책/조합':'국책/조합만' };
     const _printTitle = document.getElementById('rpt-print-title');
     const _printPeriod = document.getElementById('rpt-print-period');
     if (_printTitle)  _printTitle.textContent  = '기업체별 리포트 — ' + (_rptComp === 'all' ? '전체 기업체' : _rptComp);
-    if (_printPeriod) _printPeriod.textContent = '기간: ' + (_rptYear === 'all' ? '전체 년도' : _rptYear) + ' / ' + (_rptMonth === 'all' ? '전체 월' : _rptMonth) + '  |  출력일시: ' + new Date().toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    if (_printPeriod) _printPeriod.textContent = '기간: ' + (_rptYear === 'all' ? '전체 년도' : _rptYear) + ' / ' + (_rptMonth === 'all' ? '전체 월' : _rptMonth) + '  |  정산구분: ' + (_settleLabelMap[_rptSettle] || '전체') + '  |  출력일시: ' + new Date().toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 
     applyPrintColors();
     // canvas 배경 흰색
@@ -4476,8 +4497,8 @@ function renderReconcile() {
   // ── 기업체별 카드 생성 ──────────────────────────────────────────
   const grid = document.getElementById('reconcileGrid');
   grid.innerHTML = masterCompanies.map(company => {
-    // 기업인보이스: 해당 기업체의 카테고리별 합계 (정산+미정산+국책/조합 전부 포함)
-    const companyRows = allC.filter(r => r.company === company);
+    // 기업인보이스: 해당 기업체의 카테고리별 합계 (정산 + 국책/조합만 포함, 미정산 제외)
+    const companyRows = allC.filter(r => r.company === company && isPaid(r.settleType));
 
     // 공급사인보이스: supplier 이름 기준으로 기업체 컬럼 합계
     // SRT supplier → SRT, KTX supplier → KTX, 나머지는 category 기준
@@ -4507,9 +4528,9 @@ function renderReconcile() {
     totalSupplierAmt += grandSuppAmt;
     if (grandMatch) totalMatch++; else totalMismatch++;
 
-    // settle type 표시 (정산+미정산 포함 여부)
-    const hasUnsettled = companyRows.some(r => !isPaid(r.settleType));
-    const settleLabel = hasUnsettled ? '정산+미정산 포함' : '정산 포함';
+    // 정산 구성 표시 (미정산은 항상 제외되므로 국책/조합 포함 여부만 표시)
+    const hasGukChaek = companyRows.some(r => r.settleType === '국책/조합');
+    const settleLabel = hasGukChaek ? '정산 + 국책/조합' : '정산만';
 
     return `<div class="card" style="overflow:visible">
       <div class="card-header" style="gap:8px">
@@ -5373,18 +5394,27 @@ function renderCompanyReport() {
   const company = document.getElementById('rpt-company')?.value || 'all';
   const year    = document.getElementById('rpt-year')?.value    || 'all';
   const month   = document.getElementById('rpt-month')?.value   || 'all';
+  const settle  = document.getElementById('rpt-settle')?.value  || 'all';  // 정산구분 (기업 데이터에만 적용)
+
+  // 정산구분 필터 헬퍼 (기업 데이터에만 적용)
+  const passSettle = (r) => {
+    if (settle === 'all') return true;
+    if (settle === 'paid') return isPaid(r.settleType);
+    return r.settleType === settle;
+  };
 
   // 헤더 회사명
   const hdr = document.getElementById('rpt-header-company');
   if (hdr) hdr.textContent = company === 'all' ? '전체 기업체' : company;
 
-  // 필터된 기업 데이터 (전체 선택 시 모든 기업체)
+  // 필터된 기업 데이터 (※ 정산구분 필터 포함)
   const allC = [...companyData, ...userCompanyData].filter(r =>
     (company === 'all' || r.company === company) &&
     (year  === 'all' || r.year  === year) &&
-    (month === 'all' || r.month === month)
+    (month === 'all' || r.month === month) &&
+    passSettle(r)
   );
-  // 필터된 공급사 데이터
+  // 필터된 공급사 데이터 (※ 정산구분 필터는 적용하지 않음 - 공급사 데이터는 정산구분 개념 없음)
   const allS = [...supplierData, ...userSupplierData].filter(r =>
     (year  === 'all' || r.year  === year) &&
     (month === 'all' || r.month === month)
@@ -5421,7 +5451,8 @@ function renderCompanyReport() {
 
   // ── 월별 추이 차트 ──
   _destroyRptChart('month');
-  const _allCData = [...companyData, ...userCompanyData];
+  // ※ 정산구분 필터(passSettle)도 적용 - 기업 데이터 전체에 일관 적용
+  const _allCData = [...companyData, ...userCompanyData].filter(passSettle);
   // 전체 또는 특정 기업체의 년/월 목록 수집
   const monthSet = [...new Set(
     _allCData
