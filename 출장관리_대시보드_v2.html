@@ -8,6 +8,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <!-- SheetJS for Excel import/export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- SHA-256 fallback (Web Crypto API가 file:// 등 non-secure context에서 동작 안 할 때) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.11.0/sha256.min.js"></script>
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -1123,6 +1125,11 @@
     <div class="login-footer">
       🔒 최초 관리자 계정: <strong style="color:var(--accent)">admin / admin1234</strong><br>
       로그인 후 즉시 비밀번호를 변경하세요.
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08)">
+        <a href="javascript:void(0)" onclick="resetAuthData()" style="color:var(--danger);text-decoration:none;font-size:11px">
+          ⚠ 로그인 안 되시나요? 사용자 데이터 초기화
+        </a>
+      </div>
     </div>
   </div>
 </div>
@@ -5483,11 +5490,40 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// ── SHA-256 해시 (Web Crypto API)
-async function sha256(text) {
-  const enc = new TextEncoder().encode(text);
-  const hashBuf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+// ── SHA-256 해시 — Web Crypto API 우선, 안 되면 js-sha256 fallback
+async function hashPassword(text) {
+  // 1순위: Web Crypto API (HTTPS / localhost / secure context)
+  try {
+    if (window.crypto && window.crypto.subtle && typeof window.crypto.subtle.digest === 'function') {
+      const enc = new TextEncoder().encode(text);
+      const hashBuf = await window.crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch(e) {
+    console.warn('[Auth] crypto.subtle 사용 불가, js-sha256 fallback 사용:', e.message);
+  }
+  // 2순위: js-sha256 라이브러리 (file:// 등 non-secure context)
+  if (typeof window.sha256 === 'function') {
+    return window.sha256(text);
+  }
+  // 둘 다 실패
+  throw new Error('SHA-256 구현체를 로딩할 수 없습니다. 인터넷 연결을 확인하세요.');
+}
+
+// ── 비상 복구: localStorage의 사용자 데이터 초기화
+function resetAuthData() {
+  if (!confirm('⚠ 모든 사용자 계정과 로그인 세션을 삭제하고 기본 관리자 계정(admin/admin1234)으로 초기화합니다.\n\n계속하시겠습니까?')) return;
+  try {
+    localStorage.removeItem(USERS_KEY);
+    localStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(AUTH_KEY);
+    users = [];
+    currentUser = null;
+    alert('✅ 초기화 완료. 페이지를 새로고침합니다.\n\n기본 계정: admin / admin1234');
+    location.reload();
+  } catch(e) {
+    alert('초기화 중 오류: ' + e.message);
+  }
 }
 
 // ── 사용자 목록 로드 (Firebase 우선, 없으면 localStorage)
@@ -5538,10 +5574,12 @@ async function saveUsers() {
   }
 }
 
-// ── 기본 admin 계정 보장 (최초 1회)
+// ── 기본 admin 계정 보장 (최초 1회 + admin이 누락된 경우 자동 복구)
 async function ensureDefaultAdmin() {
+  // 케이스 1: 사용자가 아예 없음 → admin 추가
   if (!users || users.length === 0) {
-    const defaultHash = await sha256('admin1234');
+    console.log('[Auth] 사용자 목록이 비어있음 → 기본 admin 생성');
+    const defaultHash = await hashPassword('admin1234');
     users = [{
       username: 'admin',
       passwordHash: defaultHash,
@@ -5549,6 +5587,28 @@ async function ensureDefaultAdmin() {
       createdAt: new Date().toISOString()
     }];
     await saveUsers();
+    return;
+  }
+  // 케이스 2: admin 권한 보유자가 1명도 없음 → admin 추가 (잠금 방지)
+  const hasAdmin = users.some(u => u.role === 'admin');
+  if (!hasAdmin) {
+    console.log('[Auth] admin 권한자 없음 → 기본 admin 복구');
+    const defaultHash = await hashPassword('admin1234');
+    // admin 이름이 이미 user 역할로 있을 수도 있으니 중복 회피
+    let adminName = 'admin';
+    let suffix = 0;
+    while (users.some(u => u.username === adminName)) {
+      suffix += 1;
+      adminName = 'admin' + suffix;
+    }
+    users.push({
+      username: adminName,
+      passwordHash: defaultHash,
+      role: 'admin',
+      createdAt: new Date().toISOString()
+    });
+    await saveUsers();
+    console.log(`[Auth] 복구된 admin 계정명: "${adminName}", 비밀번호: admin1234`);
   }
 }
 
@@ -5566,27 +5626,41 @@ async function doLogin() {
     return;
   }
 
-  // 최신 사용자 목록 다시 로드 (다른 기기에서 추가된 경우 대비)
-  await loadUsers();
-  await ensureDefaultAdmin();
+  try {
+    console.log('[Auth] 로그인 시도:', u);
+    // 최신 사용자 목록 다시 로드 (다른 기기에서 추가된 경우 대비)
+    await loadUsers();
+    await ensureDefaultAdmin();
+    console.log('[Auth] 등록된 사용자 수:', users.length, '/ 사용자명들:', users.map(x=>x.username));
 
-  const pwHash = await sha256(p);
-  const user = users.find(x => x.username === u && x.passwordHash === pwHash);
-  if (!user) {
-    errEl.textContent = '❌ 아이디 또는 비밀번호가 일치하지 않습니다.';
+    const pwHash = await hashPassword(p);
+    console.log('[Auth] 입력한 비밀번호 해시 앞 8자:', pwHash.slice(0, 8));
+
+    const user = users.find(x => x.username === u && x.passwordHash === pwHash);
+    if (!user) {
+      // 더 구체적인 진단
+      const userExists = users.some(x => x.username === u);
+      if (!userExists) {
+        errEl.textContent = `❌ "${u}" 계정이 존재하지 않습니다. (등록된 계정: ${users.map(x=>x.username).join(', ') || '없음'})`;
+      } else {
+        errEl.textContent = '❌ 비밀번호가 일치하지 않습니다.';
+      }
+      errEl.classList.add('show');
+      return;
+    }
+
+    currentUser = { username: user.username, role: user.role, loggedInAt: Date.now() };
+    const storage = remember ? localStorage : sessionStorage;
+    storage.setItem(AUTH_KEY, JSON.stringify(currentUser));
+    (remember ? sessionStorage : localStorage).removeItem(AUTH_KEY);
+
+    console.log('[Auth] 로그인 성공:', currentUser);
+    enterApp();
+  } catch(err) {
+    console.error('[Auth] 로그인 처리 중 오류:', err);
+    errEl.innerHTML = `❌ 로그인 처리 오류: ${err.message}<br><small style="opacity:0.7">콘솔(F12)에서 자세한 내용을 확인하세요.</small>`;
     errEl.classList.add('show');
-    return;
   }
-
-  currentUser = { username: user.username, role: user.role, loggedInAt: Date.now() };
-  // remember=true → localStorage, false → sessionStorage
-  const storage = remember ? localStorage : sessionStorage;
-  storage.setItem(AUTH_KEY, JSON.stringify(currentUser));
-  // 반대 storage 정리
-  (remember ? sessionStorage : localStorage).removeItem(AUTH_KEY);
-
-  // 로그인 후 진입
-  enterApp();
 }
 
 // ── 로그아웃
@@ -5677,7 +5751,7 @@ async function addUser() {
   }
   if (!pw || pw.length < 4) { toast('⚠ 비밀번호는 4자 이상'); return; }
   if (users.some(u => u.username === id)) { toast('⚠ 이미 존재하는 아이디입니다'); return; }
-  const hash = await sha256(pw);
+  const hash = await hashPassword(pw);
   users.push({ username: id, passwordHash: hash, role, createdAt: new Date().toISOString() });
   await saveUsers();
   document.getElementById('newUserId').value = '';
@@ -5721,7 +5795,7 @@ async function resetUserPassword(i) {
   const newPw = prompt(`"${u.username}" 계정의 새 비밀번호를 입력하세요 (4자 이상):`);
   if (newPw === null) return;
   if (!newPw || newPw.length < 4) { toast('⚠ 비밀번호는 4자 이상'); return; }
-  u.passwordHash = await sha256(newPw);
+  u.passwordHash = await hashPassword(newPw);
   await saveUsers();
   toast(`🔑 "${u.username}" 비밀번호가 변경되었습니다`);
 }
@@ -6068,24 +6142,45 @@ async function authBootstrap() {
   if (window._authBootstrapped) return;
   window._authBootstrapped = true;
 
-  // 사용자 목록 로드 → 기본 admin 보장
-  await loadUsers();
-  await ensureDefaultAdmin();
+  console.log('[Auth] 부트스트랩 시작');
+  console.log('[Auth] Web Crypto API 사용 가능:', !!(window.crypto && window.crypto.subtle));
+  console.log('[Auth] js-sha256 fallback 사용 가능:', typeof window.sha256 === 'function');
+  console.log('[Auth] Firebase 연결:', window._firebaseReady ? '✅' : '❌ (로컬 모드)');
 
-  // 저장된 인증 확인
-  const auth = getStoredAuth();
-  if (auth && isAuthValid(auth)) {
-    currentUser = auth;
-    enterApp();
-  } else {
-    // 로그인 화면 표시
-    localStorage.removeItem(AUTH_KEY);
-    sessionStorage.removeItem(AUTH_KEY);
-    document.getElementById('loginOverlay').style.display = 'flex';
-    setTimeout(() => {
-      const inp = document.getElementById('loginUsername');
-      if (inp) inp.focus();
-    }, 100);
+  try {
+    // 사용자 목록 로드 → 기본 admin 보장
+    await loadUsers();
+    await ensureDefaultAdmin();
+    console.log('[Auth] 사용자 목록 로드 완료, 사용자 수:', users.length);
+
+    // 저장된 인증 확인
+    const auth = getStoredAuth();
+    if (auth && isAuthValid(auth)) {
+      console.log('[Auth] 기존 세션 발견, 자동 로그인:', auth.username);
+      currentUser = auth;
+      enterApp();
+    } else {
+      // 로그인 화면 표시
+      localStorage.removeItem(AUTH_KEY);
+      sessionStorage.removeItem(AUTH_KEY);
+      const overlay = document.getElementById('loginOverlay');
+      if (overlay) overlay.style.display = 'flex';
+      setTimeout(() => {
+        const inp = document.getElementById('loginUsername');
+        if (inp) inp.focus();
+      }, 100);
+      console.log('[Auth] 로그인 화면 표시');
+    }
+  } catch(err) {
+    console.error('[Auth] 부트스트랩 오류:', err);
+    // 오류가 나도 로그인 화면은 보이게
+    const overlay = document.getElementById('loginOverlay');
+    if (overlay) overlay.style.display = 'flex';
+    const errEl = document.getElementById('loginError');
+    if (errEl) {
+      errEl.innerHTML = `⚠ 시스템 초기화 오류: ${err.message}<br><small style="opacity:0.7">콘솔(F12)에서 자세한 내용을 확인하세요.</small>`;
+      errEl.classList.add('show');
+    }
   }
 }
 
