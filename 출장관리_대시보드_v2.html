@@ -2575,20 +2575,28 @@ async function confirmEditMasterCompany(i) {
   // 1) 마스터 갱신
   masterCompanies[i] = newName;
 
-  // 2) 기업체 데이터(.company 필드)에 반영
-  [companyData, userCompanyData].forEach(arr => {
-    arr.forEach(r => { if (r.company === oldName) r.company = newName; });
-  });
+  // 2) 기업체 데이터(.company 필드)에 반영 — 변경 건수 추적
+  let baseCompChanged = 0, userCompChanged = 0;
+  companyData.forEach(r => { if (r.company === oldName) { r.company = newName; baseCompChanged++; } });
+  userCompanyData.forEach(r => { if (r.company === oldName) { r.company = newName; userCompChanged++; } });
 
   // 3) 공급사 데이터(각 행의 oldName 키 → newName 키로 rename)
-  [supplierData, userSupplierData].forEach(arr => {
-    arr.forEach(r => {
-      if (Object.prototype.hasOwnProperty.call(r, oldName)) {
-        r[newName] = r[oldName];
-        delete r[oldName];
-      }
-    });
+  let baseSupKeyChanged = 0, userSupKeyChanged = 0;
+  supplierData.forEach(r => {
+    if (Object.prototype.hasOwnProperty.call(r, oldName)) {
+      r[newName] = r[oldName];
+      delete r[oldName];
+      baseSupKeyChanged++;
+    }
   });
+  userSupplierData.forEach(r => {
+    if (Object.prototype.hasOwnProperty.call(r, oldName)) {
+      r[newName] = r[oldName];
+      delete r[oldName];
+      userSupKeyChanged++;
+    }
+  });
+  console.log('[마스터 수정] 기업체 데이터 변경: 기업데이터', baseCompChanged + userCompChanged, '건, 공급사 데이터 키', baseSupKeyChanged + userSupKeyChanged, '건');
 
   // 4) 메모 키 변경 (reportMemos: "기업체__년도__월")
   const updatedReport = {};
@@ -2638,10 +2646,36 @@ async function confirmEditMasterCompany(i) {
   try {
     await saveToStorage();
     console.log('[마스터 수정] 저장 완료');
-    toast(`✏️ "${oldName}" → "${newName}" 변경 및 저장 완료`);
+
+    const totalChanged = baseCompChanged + userCompChanged + baseSupKeyChanged + userSupKeyChanged;
+    if (totalChanged === 0) {
+      const allCompanyNames = [...new Set([...companyData, ...userCompanyData].map(r => r.company))];
+      alert(
+        `⚠ 마스터 이름은 변경되었지만, 데이터에 매칭되는 행이 없습니다.\n\n` +
+        `변경: "${oldName}" → "${newName}"\n` +
+        `매칭 건수: 0건\n\n` +
+        `현재 데이터에 있는 기업체 목록:\n` +
+        allCompanyNames.map((n, i) => `${i+1}. ${n}`).join('\n')
+      );
+    } else {
+      const doReload = confirm(
+        `✅ 기업체 마스터 변경 완료\n\n` +
+        `"${oldName}" → "${newName}"\n` +
+        `기업 데이터 갱신: ${baseCompChanged + userCompChanged}건\n` +
+        `공급사 데이터 키 변경: ${baseSupKeyChanged + userSupKeyChanged}건\n\n` +
+        `종합 대시보드 차트와 기타 화면에 즉시 반영하려면\n` +
+        `페이지를 새로고침하는 것을 권장합니다.\n\n` +
+        `[확인] 지금 새로고침 / [취소] 나중에 직접 새로고침`
+      );
+      if (doReload) {
+        location.reload();
+        return;
+      }
+      toast(`✏️ "${oldName}" → "${newName}" 변경 완료 (${totalChanged}건)`);
+    }
   } catch(err) {
     console.error('[마스터 수정] 저장 실패:', err);
-    toast(`⚠ 저장 실패: ${err.message}`);
+    alert(`⚠ 저장 실패: ${err.message}\n\n변경된 내용이 저장되지 않았을 수 있습니다.`);
   }
 }
 
@@ -2755,14 +2789,38 @@ async function confirmEditMasterSupplier(i) {
   try {
     await saveToStorage();
     console.log('[마스터 수정] 저장 완료');
+
     if (baseChanged === 0 && userChanged === 0) {
-      toast(`✏️ "${oldName}" → "${newName}" 변경됨 (단, 해당 공급사 데이터가 없어 차트는 변경 없음)`);
+      // 매칭된 데이터 없음 — 데이터에 있는 supplier 목록 표시
+      const allSupplierNames = [...new Set([...supplierData, ...userSupplierData].map(r => r.supplier))];
+      alert(
+        `⚠ 마스터 이름은 변경되었지만, 데이터에 매칭되는 행이 없습니다.\n\n` +
+        `변경: "${oldName}" → "${newName}"\n` +
+        `매칭 건수: 0건\n\n` +
+        `현재 데이터에 있는 공급사 목록:\n` +
+        allSupplierNames.map((n, i) => `${i+1}. ${n}`).join('\n') +
+        `\n\n원인: 데이터의 supplier 필드와 마스터의 oldName이 정확히 일치하지 않습니다.\n` +
+        `(공백/오타/이전 변경으로 인한 불일치 가능)`
+      );
     } else {
-      toast(`✏️ "${oldName}" → "${newName}" 변경 완료 (${baseChanged + userChanged}건 데이터 갱신)`);
+      // 정상 변경 — 결과 확인 + 자동 새로고침 제안
+      const doReload = confirm(
+        `✅ 공급사 마스터 변경 완료\n\n` +
+        `"${oldName}" → "${newName}"\n` +
+        `데이터 갱신: ${baseChanged + userChanged}건 (시드 ${baseChanged} / 사용자 ${userChanged})\n\n` +
+        `종합 대시보드 차트와 기타 화면에 즉시 반영하려면\n` +
+        `페이지를 새로고침하는 것을 권장합니다.\n\n` +
+        `[확인] 지금 새로고침 / [취소] 나중에 직접 새로고침`
+      );
+      if (doReload) {
+        location.reload();
+        return;
+      }
+      toast(`✏️ "${oldName}" → "${newName}" 변경 완료 (${baseChanged + userChanged}건)`);
     }
   } catch(err) {
     console.error('[마스터 수정] 저장 실패:', err);
-    toast(`⚠ 저장 실패: ${err.message}`);
+    alert(`⚠ 저장 실패: ${err.message}\n\n변경된 내용이 저장되지 않았을 수 있습니다.`);
   }
 }
 
