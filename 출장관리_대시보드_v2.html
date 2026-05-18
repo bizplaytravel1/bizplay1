@@ -55,18 +55,19 @@
 </script>
 <style>
   :root {
-    --bg: #0c1220;
-    --surface: #141e2e;
-    --surface2: #1c2840;
-    --border: #243350;
-    --accent: #3b82f6;
-    --accent2: #06b6d4;
-    --accent3: #8b5cf6;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --text: #e8edf5;
-    --muted: #7a90a8;
+    /* ━━━━━━ LIGHT THEME (화이트 + 진한 파랑 강조) ━━━━━━ */
+    --bg: #f5f7fa;          /* 메인 배경 - 부드러운 라이트 그레이 */
+    --surface: #ffffff;     /* 카드/사이드바 배경 - 순수 화이트 */
+    --surface2: #f1f5f9;    /* 보조 표면 - 옅은 슬레이트 */
+    --border: #e2e8f0;      /* 보더 - 부드러운 그레이 */
+    --accent: #2563eb;      /* 진한 파랑 (주 강조) */
+    --accent2: #0891b2;     /* 진한 시안 */
+    --accent3: #7c3aed;     /* 진한 퍼플 */
+    --success: #059669;     /* 진한 그린 */
+    --warning: #d97706;     /* 진한 오렌지 */
+    --danger: #dc2626;      /* 진한 레드 */
+    --text: #0f172a;        /* 진한 슬레이트 (본문) */
+    --muted: #64748b;       /* 중간 슬레이트 (보조 텍스트) */
     --font: 'Noto Sans KR', sans-serif;
     --mono: 'JetBrains Mono', monospace;
   }
@@ -81,14 +82,14 @@
     overflow-x: hidden;
   }
 
-  /* Background grid */
+  /* Background grid - 라이트 모드에 맞춰 옅게 */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background-image: 
-      linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+      linear-gradient(rgba(37,99,235,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(37,99,235,0.025) 1px, transparent 1px);
     background-size: 40px 40px;
     pointer-events: none;
     z-index: 0;
@@ -281,7 +282,7 @@
   .status-dd-wrap .badge { transition: opacity .15s; }
   .settle-dd-wrap .badge:hover,
   .status-dd-wrap .badge:hover { opacity: .85; }
-  .status-drop { display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:100px;overflow:hidden; }
+  .status-drop { display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.12);min-width:100px;overflow:hidden; }
   .status-opt { padding:8px 14px;font-size:12px;cursor:pointer; }
 
   .content { padding: 24px 28px; }
@@ -442,7 +443,7 @@
 
   td {
     padding: 11px 14px;
-    border-bottom: 1px solid rgba(30,45,69,0.5);
+    border-bottom: 1px solid var(--border);
     color: var(--text);
     white-space: nowrap;
   }
@@ -612,7 +613,7 @@
   /* MODAL */
   .modal-overlay {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.7);
+    background: rgba(15,23,42,0.45);
     backdrop-filter: blur(4px);
     z-index: 200;
     display: none;
@@ -816,29 +817,28 @@
 
   .login-overlay {
     position: fixed; inset: 0; z-index: 9999;
-    background: linear-gradient(135deg, #0a1024 0%, #0c1220 50%, #131b30 100%);
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f7fa 50%, #e0e7ff 100%);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
   }
   .login-overlay::before {
     content: ''; position: absolute; inset: 0;
     background-image:
-      radial-gradient(circle at 20% 30%, rgba(59,130,246,0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 70%, rgba(139,92,246,0.12) 0%, transparent 50%),
-      linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+      radial-gradient(circle at 20% 30%, rgba(37,99,235,0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(124,58,237,0.06) 0%, transparent 50%),
+      linear-gradient(rgba(37,99,235,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(37,99,235,0.03) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
     pointer-events: none;
   }
   .login-card {
     position: relative; z-index: 1;
     width: 100%; max-width: 420px;
-    background: rgba(20, 30, 46, 0.85);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(59,130,246,0.25);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
     border-radius: 16px;
     padding: 40px 36px;
-    box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
+    box-shadow: 0 30px 60px -15px rgba(15,23,42,0.18), 0 0 0 1px rgba(37,99,235,0.04);
   }
   .login-logo {
     display: flex; align-items: center; gap: 12px;
@@ -850,7 +850,7 @@
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     display: flex; align-items: center; justify-content: center;
     font-size: 24px;
-    box-shadow: 0 10px 24px -4px rgba(59,130,246,0.5);
+    box-shadow: 0 10px 24px -4px rgba(37,99,235,0.35);
   }
   .login-title { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
   .login-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
@@ -867,8 +867,8 @@
   .login-field input {
     width: 100%;
     padding: 13px 14px;
-    background: rgba(12, 18, 32, 0.6);
-    border: 1px solid rgba(59,130,246,0.18);
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
     border-radius: 9px;
     color: var(--text);
     font-size: 14px;
@@ -878,8 +878,8 @@
   .login-field input:focus {
     outline: none;
     border-color: var(--accent);
-    background: rgba(12, 18, 32, 0.9);
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
   }
   .login-btn {
     width: 100%;
@@ -891,22 +891,22 @@
     transition: transform 0.15s, box-shadow 0.15s;
     margin-top: 8px;
   }
-  .login-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -6px rgba(59,130,246,0.55); }
+  .login-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -6px rgba(37,99,235,0.4); }
   .login-btn:active { transform: translateY(0); }
   .login-error {
     margin-top: 14px;
     padding: 10px 14px;
-    background: rgba(239,68,68,0.1);
-    border: 1px solid rgba(239,68,68,0.3);
+    background: rgba(220,38,38,0.08);
+    border: 1px solid rgba(220,38,38,0.25);
     border-radius: 8px;
-    color: #fca5a5;
+    color: #b91c1c;
     font-size: 12px;
     display: none;
   }
   .login-error.show { display: block; }
   .login-footer {
     margin-top: 24px; padding-top: 18px;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    border-top: 1px solid #e2e8f0;
     font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6;
   }
   .login-remember {
@@ -920,7 +920,7 @@
     margin-top: auto;
     padding: 14px 16px;
     border-top: 1px solid var(--border);
-    background: rgba(59,130,246,0.04);
+    background: rgba(37,99,235,0.04);
   }
   .sidebar-user-row { display: flex; align-items: center; gap: 10px; }
   .sidebar-user-avatar {
@@ -935,8 +935,8 @@
   .sidebar-user-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sidebar-user-role { font-size: 10px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.05em; }
   .sidebar-user-logout {
-    background: rgba(239,68,68,0.12);
-    border: 1px solid rgba(239,68,68,0.3);
+    background: rgba(220,38,38,0.08);
+    border: 1px solid rgba(220,38,38,0.25);
     color: var(--danger);
     border-radius: 6px;
     padding: 5px 10px;
@@ -944,22 +944,22 @@
     cursor: pointer;
     transition: all 0.15s;
   }
-  .sidebar-user-logout:hover { background: rgba(239,68,68,0.2); }
+  .sidebar-user-logout:hover { background: rgba(220,38,38,0.15); }
 
   /* admin 전용 메뉴/카드: role-admin일 때만 노출 (기본은 숨김) */
   .admin-only { display: none !important; }
   body.role-admin .admin-only { display: revert !important; }
 
-  /* 엑셀 일괄 등록 박스 */
+  /* 엑셀 일괄 등록 박스 (라이트 모드) */
   .bulk-box {
     margin-top: 16px;
     padding: 14px 16px;
-    background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(6,182,212,0.04));
-    border: 1px dashed rgba(16,185,129,0.3);
+    background: linear-gradient(135deg, rgba(5,150,105,0.04), rgba(8,145,178,0.03));
+    border: 1px dashed rgba(5,150,105,0.35);
     border-radius: 10px;
   }
   .bulk-box-title {
-    font-size: 12px; font-weight: 700; color: #6ee7b7;
+    font-size: 12px; font-weight: 700; color: var(--success);
     margin-bottom: 4px;
     display: flex; align-items: center; gap: 6px;
   }
@@ -970,52 +970,52 @@
   .bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .btn-bulk {
     padding: 8px 14px;
-    background: rgba(16,185,129,0.12);
-    border: 1px solid rgba(16,185,129,0.35);
-    color: #6ee7b7;
+    background: rgba(5,150,105,0.08);
+    border: 1px solid rgba(5,150,105,0.35);
+    color: var(--success);
     border-radius: 7px;
     font-size: 12px; font-weight: 600;
     cursor: pointer; transition: all 0.15s;
     display: inline-flex; align-items: center; gap: 6px;
   }
-  .btn-bulk:hover { background: rgba(16,185,129,0.2); transform: translateY(-1px); }
+  .btn-bulk:hover { background: rgba(5,150,105,0.15); transform: translateY(-1px); }
   .btn-bulk.upload {
-    background: rgba(59,130,246,0.12);
-    border-color: rgba(59,130,246,0.35);
-    color: #93c5fd;
+    background: rgba(37,99,235,0.08);
+    border-color: rgba(37,99,235,0.35);
+    color: var(--accent);
   }
-  .btn-bulk.upload:hover { background: rgba(59,130,246,0.2); }
+  .btn-bulk.upload:hover { background: rgba(37,99,235,0.15); }
 
-  /* 마스터 항목 편집 인풋 */
+  /* 마스터 항목 편집 인풋 (라이트) */
   .master-edit-input {
     flex: 1; padding: 5px 9px;
-    background: rgba(12, 18, 32, 0.8);
+    background: #ffffff;
     border: 1px solid var(--accent);
     border-radius: 5px;
     color: var(--text);
     font-size: 13px; font-weight: 600;
     font-family: var(--font);
   }
-  .master-edit-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.25); }
+  .master-edit-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
 
-  /* ── 마스터 관리 화면 밝기 ── */
+  /* ── 마스터 관리 화면 (라이트 모드) ── */
   #master-manage .card {
-    background: #161f30 !important;
-    border-color: #2a3a54 !important;
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
   }
   #master-manage .card-header {
-    background: #1a2840 !important;
-    border-bottom-color: #2a3a54 !important;
+    background: #f8fafc !important;
+    border-bottom-color: #e2e8f0 !important;
   }
   #master-manage .form-input,
   #master-manage .form-select {
-    background: #1e2d45 !important;
-    border-color: #2e4065 !important;
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
     color: var(--text) !important;
   }
   #master-manage .notice {
-    background: rgba(59,130,246,0.08) !important;
-    border-color: rgba(59,130,246,0.25) !important;
+    background: rgba(37,99,235,0.06) !important;
+    border-color: rgba(37,99,235,0.2) !important;
     color: var(--text) !important;
   }
 
@@ -1124,13 +1124,7 @@
       <div id="loginError" class="login-error"></div>
     </form>
     <div class="login-footer">
-      🔒 최초 관리자 계정: <strong style="color:var(--accent)">admin / admin1234</strong><br>
-      로그인 후 즉시 비밀번호를 변경하세요.
-      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08)">
-        <a href="javascript:void(0)" onclick="resetAuthData()" style="color:var(--danger);text-decoration:none;font-size:11px">
-          ⚠ 로그인 안 되시나요? 사용자 데이터 초기화
-        </a>
-      </div>
+      <span style="opacity:0.5">© 2026 출장관리 시스템 · 인가된 사용자만 접근 가능</span>
     </div>
   </div>
 </div>
@@ -3451,8 +3445,8 @@ function initCharts() {
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: ctx => `  ${ctx.raw.toLocaleString()}원  (${((ctx.raw/catTotal)*100).toFixed(1)}%)` } } },
       scales: {
-        x: { grid: { color:'#1e2d45' }, ticks: { display: true, color:'#94a3b8', font:{ family:'Noto Sans KR', size:12, weight:'600' } } },
-        y: { grid: { color:'#1e2d45' }, ticks: { color:'#64748b', font:{ family:'JetBrains Mono', size:10 }, callback: v => v.toLocaleString() } }
+        x: { grid: { color:'#e2e8f0' }, ticks: { display: true, color:'#475569', font:{ family:'Noto Sans KR', size:12, weight:'600' } } },
+        y: { grid: { color:'#e2e8f0' }, ticks: { color:'#64748b', font:{ family:'JetBrains Mono', size:10 }, callback: v => v.toLocaleString() } }
       }
     }
   });
@@ -3461,10 +3455,10 @@ function initCharts() {
   const catColors = ['#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b','#ef4444','#a78bfa'];
   const catNames  = Object.keys(catTotals);
   document.getElementById('categoryLegend').innerHTML = catNames.map((name, i) =>
-    `<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#94a3b8">
+    `<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#475569">
       <span style="width:10px;height:10px;border-radius:3px;background:${catColors[i]};display:inline-block;flex-shrink:0"></span>
       <span>${name}</span>
-      <span style="font-family:var(--mono);color:#64748b;font-size:10px">(${catTotal ? ((catTotals[name]/catTotal)*100).toFixed(0) : 0}%)</span>
+      <span style="font-family:var(--mono);color:#94a3b8;font-size:10px">(${catTotal ? ((catTotals[name]/catTotal)*100).toFixed(0) : 0}%)</span>
     </div>`
   ).join('');
 
@@ -3475,7 +3469,7 @@ function initCharts() {
 
   new Chart(document.getElementById('companyPieChart'), {
     type: 'doughnut', plugins: [DoughnutPctPlugin],
-    data: { labels: companies, datasets: [{ data: compTotals, backgroundColor: pieColors.company, borderColor:'#111827', borderWidth:3, hoverOffset:8 }] },
+    data: { labels: companies, datasets: [{ data: compTotals, backgroundColor: pieColors.company, borderColor:'#ffffff', borderWidth:3, hoverOffset:8 }] },
     options: { responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: ctx => `  ${ctx.label}: ${((ctx.raw/compGrandTotal)*100).toFixed(1)}%  (${ctx.raw.toLocaleString()}원)` } } }
@@ -3502,7 +3496,7 @@ function initCharts() {
 
   new Chart(document.getElementById('settleChart'), {
     type: 'doughnut', plugins: [DoughnutPctPlugin],
-    data: { labels: ['정산 완료','미정산'], datasets: [{ data: [settled, unsettled], backgroundColor: pieColors.settle, borderColor:'#111827', borderWidth:3, hoverOffset:8 }] },
+    data: { labels: ['정산 완료','미정산'], datasets: [{ data: [settled, unsettled], backgroundColor: pieColors.settle, borderColor:'#ffffff', borderWidth:3, hoverOffset:8 }] },
     options: { responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: ctx => `  ${ctx.label}: ${((ctx.raw/settleTotal)*100).toFixed(1)}%  (${ctx.raw.toLocaleString()}원)` } } }
@@ -3514,7 +3508,7 @@ function initCharts() {
   document.getElementById('settleLegend').innerHTML = settleLabels.map((name, i) => {
     const val = settleVals[i];
     const pct = settleTotal ? ((val / settleTotal) * 100).toFixed(1) : '0.0';
-    return `<div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--border)">
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
       <div style="width:12px;height:36px;border-radius:4px;background:${pieColors.settle[i]};flex-shrink:0"></div>
       <div style="flex:1">
         <div style="font-size:12px;font-weight:600;color:var(--text)">${name}</div>
@@ -3764,7 +3758,7 @@ function renderCompanyTable() {
       <td>
         <div class="settle-dd-wrap" style="position:relative;display:inline-block">
           <span class="badge ${badge[r.settleType]||'badge-blue'}" style="cursor:pointer;user-select:none" title="클릭하여 상태 변경" onclick="toggleSettleDrop(this,'${r._src}',${r._idx})">${r.settleType} ▾</span>
-          <div class="settle-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:120px;overflow:hidden">
+          <div class="settle-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.12);min-width:120px;overflow:hidden">
             ${buildSettleOpts(r._src, r._idx, r.settleType)}
           </div>
         </div>
@@ -4023,7 +4017,7 @@ function renderInvoice() {
       <td>
         <div class="settle-dd-wrap" style="position:relative;display:inline-block">
           <span class="badge ${badge[r.settleType]||'badge-blue'}" style="cursor:pointer;user-select:none" title="클릭하여 상태 변경" onclick="toggleSettleDrop(this,'${r._src}',${r._idx})">${r.settleType} ▾</span>
-          <div class="settle-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:120px;overflow:hidden">
+          <div class="settle-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.12);min-width:120px;overflow:hidden">
             ${buildSettleOpts(r._src, r._idx, r.settleType)}
           </div>
         </div>
@@ -5234,19 +5228,19 @@ function renderCompanyReport() {
       data: {
         labels: monthLabels,
         datasets: [
-          { type:'bar',  label:'총 출장비', data: monthTotals,  backgroundColor:'rgba(59,130,246,0.6)', borderRadius:5, yAxisID:'y' },
-          { type:'line', label:'정산 금액', data: monthSettled, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', tension:0.4, pointRadius:4, pointBackgroundColor:'#10b981', fill:true, yAxisID:'y' }
+          { type:'bar',  label:'총 출장비', data: monthTotals,  backgroundColor:'rgba(37,99,235,0.55)', borderRadius:5, yAxisID:'y' },
+          { type:'line', label:'정산 금액', data: monthSettled, borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.08)', tension:0.4, pointRadius:4, pointBackgroundColor:'#059669', fill:true, yAxisID:'y' }
         ]
       },
       options: {
         responsive:true, maintainAspectRatio:false,
         plugins: {
-          legend:{ display:true, position:'bottom', labels:{ color:'#94a3b8', font:{size:11}, boxWidth:12, padding:16 } },
+          legend:{ display:true, position:'bottom', labels:{ color:'#475569', font:{size:11}, boxWidth:12, padding:16 } },
           tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ₩${ctx.raw.toLocaleString()}` } }
         },
         scales: {
-          x: { grid:{color:'#1e2d45'}, ticks:{color:'#94a3b8',font:{size:11}} },
-          y: { grid:{color:'#1e2d45'}, ticks:{color:'#64748b',font:{size:10}, callback:v=>v.toLocaleString()} }
+          x: { grid:{color:'#e2e8f0'}, ticks:{color:'#475569',font:{size:11}} },
+          y: { grid:{color:'#e2e8f0'}, ticks:{color:'#64748b',font:{size:10}, callback:v=>v.toLocaleString()} }
         },
         layout: { padding: { top: 30, bottom: 28 } }
       },
@@ -5265,8 +5259,8 @@ function renderCompanyReport() {
               // 바: 막대 상단 위 / 라인: 포인트 아래 (서로 반대 방향으로 완전 분리)
               const y      = isBar ? el.y - 6  : el.y + 18;
               const baseln = isBar ? 'bottom'  : 'top';
-              const color  = isBar ? '#93c5fd' : '#6ee7b7';
-              const bgCol  = isBar ? 'rgba(15,30,60,0.82)' : 'rgba(10,35,30,0.82)';
+              const color  = isBar ? '#1e40af' : '#065f46';
+              const bgCol  = isBar ? 'rgba(219,234,254,0.92)' : 'rgba(209,250,229,0.92)';
 
               ctx.save();
               ctx.font = 'bold 10px sans-serif';
@@ -5304,7 +5298,7 @@ function renderCompanyReport() {
     _rptCharts['cat'] = new Chart(ctxCat, {
       type:'doughnut', plugins:[DoughnutPctPlugin],
       data:{ labels:catFiltered.map(x=>x.k), datasets:[{ data:catFiltered.map(x=>x.v),
-        backgroundColor:catFiltered.map(x=>x.c), borderColor:'#111827', borderWidth:3, hoverOffset:6 }] },
+        backgroundColor:catFiltered.map(x=>x.c), borderColor:'#ffffff', borderWidth:3, hoverOffset:6 }] },
       options:{ responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.label}: ₩${ctx.raw.toLocaleString()}`}} },
         cutout:'62%'
@@ -5512,6 +5506,7 @@ async function hashPassword(text) {
 }
 
 // ── 비상 복구: localStorage의 사용자 데이터 초기화
+// 🔧 UI에서는 숨김 처리됨. 비상시 콘솔(F12)에서 직접 호출: resetAuthData()
 function resetAuthData() {
   if (!confirm('⚠ 모든 사용자 계정과 로그인 세션을 삭제하고 기본 관리자 계정(admin/admin1234)으로 초기화합니다.\n\n계속하시겠습니까?')) return;
   try {
@@ -5526,6 +5521,8 @@ function resetAuthData() {
     alert('초기화 중 오류: ' + e.message);
   }
 }
+// 콘솔에서 호출 가능하도록 전역 등록
+window.resetAuthData = resetAuthData;
 
 // ── 사용자 목록 로드 (Firebase 우선, 없으면 localStorage)
 async function loadUsers() {
