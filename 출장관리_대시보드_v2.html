@@ -472,6 +472,26 @@
   .badge-purple { background: rgba(139,92,246,0.15); color: var(--accent3); }
   .badge-cyan { background: rgba(6,182,212,0.15); color: var(--accent2); }
 
+  /* 정산구분 보조 태그 (국책/조합용) */
+  .settle-sub {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 5px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    background: rgba(124,58,237,0.1);
+    color: var(--accent3);
+    border: 1px solid rgba(124,58,237,0.25);
+    white-space: nowrap;
+  }
+  /* 인쇄용 */
+  @media print {
+    .settle-sub { background: #ede9fe !important; color: #5b21b6 !important; border-color: #a78bfa !important; }
+  }
+
   /* FORM */
   .form-grid {
     display: grid;
@@ -1462,7 +1482,7 @@
             <div class="form-group">
               <label class="form-label">정산 구분</label>
               <select class="form-select" id="ic-settle-type">
-                <option>정산</option><option>미정산</option><option>후정산</option><option>국책/조합</option>
+                <option>정산</option><option>미정산</option><option>국책/조합</option>
               </select>
             </div>
             <div class="form-group">
@@ -1650,12 +1670,11 @@
         </select>
         <div style="width:1px;height:24px;background:var(--border)"></div>
         <span class="filter-label">정산구분:</span>
-        <select class="form-select" id="cs-settle" onchange="applyCompanyFilters()" style="width:110px;padding:6px 10px;font-size:12px">
+        <select class="form-select" id="cs-settle" onchange="applyCompanyFilters()" style="width:140px;padding:6px 10px;font-size:12px">
           <option value="all" selected>전체</option>
-          <option value="정산">정산</option>
+          <option value="paid">정산 (전부)</option>
           <option value="미정산">미정산</option>
-          <option value="후정산">후정산</option>
-          <option value="국책/조합">국책/조합</option>
+          <option value="국책/조합">국책/조합만</option>
         </select>
         <div style="width:1px;height:24px;background:var(--border)"></div>
         <span class="filter-label">기업체:</span>
@@ -2055,7 +2074,7 @@
         <div class="form-group">
           <label class="form-label">정산구분</label>
           <select class="form-select" id="quick-settle">
-            <option>정산</option><option>미정산</option><option>후정산</option><option>국책/조합</option>
+            <option>정산</option><option>미정산</option><option>국책/조합</option>
           </select>
         </div>
         <div class="form-group">
@@ -2147,7 +2166,7 @@
         <div class="form-group">
           <label class="form-label">정산 구분</label>
           <select class="form-select" id="edit-ic-settle-type">
-            <option>정산</option><option>미정산</option><option>후정산</option><option>국책/조합</option>
+            <option>정산</option><option>미정산</option><option>국책/조합</option>
           </select>
         </div>
         <div class="form-group">
@@ -2293,6 +2312,7 @@
         <button id="hist-tab-all"      onclick="setHistTab('all')"      style="padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:var(--accent);color:#fff">전체</button>
         <button id="hist-tab-company"  onclick="setHistTab('company')"  style="padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;color:var(--muted);background:transparent">기업체별</button>
         <button id="hist-tab-supplier" onclick="setHistTab('supplier')" style="padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;color:var(--muted);background:transparent">공급사별</button>
+        <button id="hist-tab-master"   onclick="setHistTab('master')"   style="padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;color:var(--muted);background:transparent">마스터</button>
       </div>
       <!-- 검색 -->
       <input type="text" id="hist-search" class="form-input" placeholder="기업체·공급사·사유 검색..." style="flex:1;min-width:160px;padding:7px 12px;font-size:12px" oninput="renderHistoryList()">
@@ -2585,6 +2605,17 @@ function confirmEditMasterCompany(i) {
   renderCompanyInputTable();
   renderSupplierInputTable();
   if (typeof initCharts === 'function') initCharts();
+  // 이력 기록
+  if (typeof logEdit === 'function') {
+    logEdit({
+      type: 'master',
+      target: '기업체 마스터',
+      period: '-',
+      action: 'rename',
+      diffs: [`기업체명 변경: "${oldName}" → "${newName}" (관련 데이터 일괄 갱신)`],
+      reason: ''
+    });
+  }
   saveToStorage();
   toast(`✏️ "${oldName}" → "${newName}" 변경됨`);
 }
@@ -2658,6 +2689,20 @@ function confirmEditMasterSupplier(i) {
   renderSupplierTable(currentSupplierFilter || 'all');
   renderSupplierInputTable();
   if (typeof initCharts === 'function') initCharts();
+  // 이력 기록
+  if (typeof logEdit === 'function') {
+    const changes = [];
+    if (oldName !== newName) changes.push(`공급사명: "${oldName}" → "${newName}"`);
+    if (oldCat !== newCat) changes.push(`카테고리: ${oldCat} → ${newCat}`);
+    logEdit({
+      type: 'master',
+      target: '공급사 마스터',
+      period: '-',
+      action: 'rename',
+      diffs: changes,
+      reason: ''
+    });
+  }
   saveToStorage();
   toast(`✏️ "${oldName}" → "${newName}" 변경됨`);
 }
@@ -3058,8 +3103,8 @@ function exportReportXLSX() {
 
   // ── 시트 1: KPI 요약 ──
   const totalAmt     = allC.reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
-  const settledAmt   = allC.filter(r=>r.settleType==='정산').reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
-  const unsettledAmt = allC.filter(r=>r.settleType!=='정산').reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
+  const settledAmt   = allC.filter(r=>isPaid(r.settleType)).reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
+  const unsettledAmt = allC.filter(r=>!isPaid(r.settleType)).reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
 
   let sheet1Rows = '';
   [[1, '기업체별 리포트 요약'],
@@ -3527,8 +3572,8 @@ function initCharts() {
   }).join('');
 
   // ── 3. Settle doughnut + 커스텀 오른쪽 범례 ──────────────────
-  const settled = allData.filter(r => r.settleType === '정산').reduce((s,r) => s + rowTotal(r, catKeys), 0);
-  const unsettled = allData.filter(r => r.settleType !== '정산').reduce((s,r) => s + rowTotal(r, catKeys), 0);
+  const settled = allData.filter(r => isPaid(r.settleType)).reduce((s,r) => s + rowTotal(r, catKeys), 0);
+  const unsettled = allData.filter(r => !isPaid(r.settleType)).reduce((s,r) => s + rowTotal(r, catKeys), 0);
   const settleTotal = settled + unsettled;
 
   new Chart(document.getElementById('settleChart'), {
@@ -3590,8 +3635,8 @@ function refreshCharts() {
   // KPI stat cards 업데이트
   const allData = [...companyData, ...userCompanyData];
   const total = allData.reduce((s,r) => s + rowTotal(r, catKeys), 0);
-  const settled = allData.filter(r => r.settleType === '정산').reduce((s,r) => s + rowTotal(r, catKeys), 0);
-  const unsettled = allData.filter(r => r.settleType !== '정산').reduce((s,r) => s + rowTotal(r, catKeys), 0);
+  const settled = allData.filter(r => isPaid(r.settleType)).reduce((s,r) => s + rowTotal(r, catKeys), 0);
+  const unsettled = allData.filter(r => !isPaid(r.settleType)).reduce((s,r) => s + rowTotal(r, catKeys), 0);
   const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   setEl('statTotal',     total.toLocaleString() + '원');
   setEl('statSettled',   settled.toLocaleString() + '원');
@@ -3738,9 +3783,41 @@ function loadFromStorage() {
   });
 }
 
-// ── 정산구분 드롭다운 옵션 HTML 생성 (중첩 템플릿 리터럴 회피)
+// ── 정산 상태 헬퍼: 정산 또는 국책/조합이면 "정산 완료"로 간주
+function isPaid(settleType) {
+  return settleType === '정산' || settleType === '국책/조합';
+}
+
+// ── 정산구분 표시 (배지 + 국책/조합 보조 태그)
+// inline 모드: 클릭 시 드롭다운 열림 (기업체 현황/인보이스 등)
+function renderSettleBadgeHTML(settleType, src, idx, opts) {
+  opts = opts || {};
+  const clickable = opts.clickable !== false; // 기본 클릭 가능
+  const isPaidType = isPaid(settleType);
+  const mainCls = isPaidType ? 'badge-green' : 'badge-red';
+  const mainText = isPaidType ? '정산' : '미정산';
+  const subTag = settleType === '국책/조합'
+    ? '<span class="settle-sub">· 국책/조합</span>'
+    : '';
+
+  if (clickable && src !== undefined && idx !== undefined) {
+    // 클릭 가능 드롭다운 배지
+    return `<div class="settle-dd-wrap" style="position:relative;display:inline-flex;align-items:center;flex-wrap:nowrap">
+      <span class="badge ${mainCls}" style="cursor:pointer;user-select:none" title="클릭하여 정산구분 변경" onclick="toggleSettleDrop(this,'${src}',${idx})">${mainText} ▾</span>
+      <div class="settle-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.12);min-width:120px;overflow:hidden">
+        ${buildSettleOpts(src, idx, settleType)}
+      </div>
+      ${subTag}
+    </div>`;
+  } else {
+    // 단순 표시
+    return `<span class="badge ${mainCls}">${mainText}</span>${subTag}`;
+  }
+}
+
+// ── 정산구분 드롭다운 옵션 HTML 생성 (후정산 제외)
 function buildSettleOpts(srcTag, idx, currentType) {
-  return ['정산','미정산','후정산','국책/조합'].map(function(s) {
+  return ['정산','미정산','국책/조합'].map(function(s) {
     var activeStyle = s === currentType ? 'color:var(--accent);font-weight:700' : '';
     var check = s === currentType ? ' ✓' : '';
     return '<div class="settle-opt" data-val="' + s + '" onclick="changeSettle(\'' + srcTag + '\',' + idx + ',\'' + s + '\',this)" style="padding:8px 14px;font-size:12px;cursor:pointer;' + activeStyle + '">' + s + check + '</div>';
@@ -3748,8 +3825,8 @@ function buildSettleOpts(srcTag, idx, currentType) {
 }
 
 // ===================== COMPANY TABLE =====================
-// 전역 뱃지 맵 & 헬퍼
-const badge       = { '정산':'badge-green', '미정산':'badge-red', '후정산':'badge-yellow', '국책/조합':'badge-purple' };
+// 전역 뱃지 맵 (※ 정산과 국책/조합은 둘 다 초록 — 정산으로 통합)
+const badge       = { '정산':'badge-green', '미정산':'badge-red', '국책/조합':'badge-green' };
 const statusBadge = { '완료':'badge-green', '처리중':'badge-yellow', '보류':'badge-red' };
 function getStatusBadge(s) { return statusBadge[s] || 'badge-yellow'; }
 function getStatusLabel(s) { return s || '처리중'; }
@@ -3784,7 +3861,12 @@ function renderCompanyTable() {
   // 월 필터
   if (currentCompanyMonth !== 'all') rows = rows.filter(r => r.month === currentCompanyMonth);
   // 정산구분 필터
-  if (currentCompanySettle !== 'all') rows = rows.filter(r => r.settleType === currentCompanySettle);
+  if (currentCompanySettle === 'paid') {
+    // "정산 (전부)" = 정산 + 국책/조합
+    rows = rows.filter(r => isPaid(r.settleType));
+  } else if (currentCompanySettle !== 'all') {
+    rows = rows.filter(r => r.settleType === currentCompanySettle);
+  }
   // 기업체 필터
   if (currentCompanyFilter !== 'all') rows = rows.filter(r => r.company === currentCompanyFilter);
 
@@ -3797,14 +3879,7 @@ function renderCompanyTable() {
     return `<tr>
       <td class="num" style="color:var(--muted)">${r.year} ${r.month}</td>
       <td><strong>${r.company}</strong></td>
-      <td>
-        <div class="settle-dd-wrap" style="position:relative;display:inline-block">
-          <span class="badge ${badge[r.settleType]||'badge-blue'}" style="cursor:pointer;user-select:none" title="클릭하여 상태 변경" onclick="toggleSettleDrop(this,'${r._src}',${r._idx})">${r.settleType} ▾</span>
-          <div class="settle-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.12);min-width:120px;overflow:hidden">
-            ${buildSettleOpts(r._src, r._idx, r.settleType)}
-          </div>
-        </div>
-      </td>
+      <td>${renderSettleBadgeHTML(r.settleType, r._src, r._idx)}</td>
       <td class="num">${r.숙박 ? r.숙박.toLocaleString() : '-'}</td>
       <td class="num">${r.항공 ? r.항공.toLocaleString() : '-'}</td>
       <td class="num">${r.SRT ? r.SRT.toLocaleString() : '-'}</td>
@@ -3846,8 +3921,20 @@ function openEditCompanyFrom(src, idx) {
 
 function deleteCompanyFrom(src, idx) {
   if (!confirm('이 데이터를 삭제하시겠습니까?')) return;
-  if (src === 'base') companyData.splice(idx, 1);
-  else userCompanyData.splice(idx, 1);
+  const arr = src === 'base' ? companyData : userCompanyData;
+  const r = arr[idx];
+  const total = rowTotal(r, catKeys);
+  // 이력 기록
+  logEdit({
+    type: 'company',
+    target: r.company,
+    period: r.year + ' ' + r.month,
+    settleType: r.settleType,
+    action: 'delete',
+    diffs: [`🗑 데이터 삭제 (합계: ${total.toLocaleString()}원)`],
+    reason: ''
+  });
+  arr.splice(idx, 1);
   renderCompanyTable();
   renderCompanyInputTable();
   if (document.getElementById('invoice').classList.contains('active')) renderInvoice();
@@ -3867,9 +3954,34 @@ function toggleSettleDrop(badgeEl, src, idx) {
   drop.style.display = isOpen ? 'none' : 'block';
 }
 
+// ─ 수정 이력 기록 헬퍼 (모든 데이터 변경 함수에서 사용)
+function logEdit(entry) {
+  editHistory.unshift({
+    id: Date.now() + Math.floor(Math.random() * 1000),  // ID 충돌 방지
+    editedAt: new Date().toISOString(),
+    ...entry
+  });
+  if (editHistory.length > 200) editHistory.length = 200;
+}
+
 function changeSettle(src, idx, newType, optEl) {
   const arr = src === 'base' ? companyData : userCompanyData;
+  const oldType = arr[idx].settleType;
+  if (oldType === newType) {
+    const drop = optEl.closest('.settle-drop');
+    if (drop) drop.style.display = 'none';
+    return;
+  }
   arr[idx].settleType = newType;
+  // 이력 기록
+  logEdit({
+    type: 'company',
+    target: arr[idx].company,
+    period: arr[idx].year + ' ' + arr[idx].month,
+    settleType: newType,
+    diffs: [`정산구분: ${oldType} → ${newType}`],
+    reason: ''
+  });
   // 드롭다운 닫기
   const drop = optEl.closest('.settle-drop');
   if (drop) drop.style.display = 'none';
@@ -3908,7 +4020,21 @@ function toggleStatusDrop(badgeEl, src, idx) {
 
 function changeStatus(src, idx, newStatus, optEl) {
   const arr = src === 'base' ? companyData : userCompanyData;
+  const oldStatus = arr[idx].status || '처리중';
+  if (oldStatus === newStatus) {
+    const drop = optEl.closest('.status-drop');
+    if (drop) drop.style.display = 'none';
+    return;
+  }
   arr[idx].status = newStatus;
+  logEdit({
+    type: 'company',
+    target: arr[idx].company,
+    period: arr[idx].year + ' ' + arr[idx].month,
+    settleType: arr[idx].settleType,
+    diffs: [`상태: ${oldStatus} → ${newStatus}`],
+    reason: ''
+  });
   const drop = optEl.closest('.status-drop');
   if (drop) drop.style.display = 'none';
   renderCompanyTable(currentCompanyFilter);
@@ -3994,8 +4120,19 @@ function openEditSupplierFrom(src, idx) {
 
 function deleteSupplierFrom(src, idx) {
   if (!confirm('이 데이터를 삭제하시겠습니까?')) return;
-  if (src === 'base') supplierData.splice(idx, 1);
-  else userSupplierData.splice(idx, 1);
+  const arr = src === 'base' ? supplierData : userSupplierData;
+  const r = arr[idx];
+  const total = getSuppKeys().reduce((s, k) => s + (r[k] || 0), 0);
+  // 이력 기록
+  logEdit({
+    type: 'supplier',
+    target: `${r.category} / ${r.supplier}`,
+    period: r.year + ' ' + r.month,
+    action: 'delete',
+    diffs: [`🗑 데이터 삭제 (합계: ${total.toLocaleString()}원)`],
+    reason: ''
+  });
+  arr.splice(idx, 1);
   renderSupplierTable(currentSupplierFilter);
   renderSupplierInputTable();
   if (document.getElementById('invoice').classList.contains('active')) renderInvoice();
@@ -4026,9 +4163,9 @@ function renderInvoice() {
     return yearOk && monthOk;
   });
 
-  // ─ 요약 카드
-  const totalSettled = allC.filter(r=>r.settleType==='정산').reduce((s,r)=>s+rowTotal(r,catKeys),0);
-  const totalUnsettled = allC.filter(r=>r.settleType!=='정산').reduce((s,r)=>s+rowTotal(r,catKeys),0);
+  // ─ 요약 카드 (※ 정산 = 정산 + 국책/조합 통합)
+  const totalSettled = allC.filter(r => isPaid(r.settleType)).reduce((s,r)=>s+rowTotal(r,catKeys),0);
+  const totalUnsettled = allC.filter(r => !isPaid(r.settleType)).reduce((s,r)=>s+rowTotal(r,catKeys),0);
   const totalAll = totalSettled + totalUnsettled;
   document.getElementById('invoiceSummary').innerHTML = `
     <div style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:12px">
@@ -4049,22 +4186,14 @@ function renderInvoice() {
     </div>
   `;
 
-  // ─ 기업체 목록 테이블 (※ 미정산 행은 표시하지 않음 — 정산만 노출)
-  const badge = { '정산':'badge-green', '미정산':'badge-red', '후정산':'badge-yellow', '국책/조합':'badge-purple' };
-  const allCSettled = allC.filter(r => r.settleType === '정산');
+  // ─ 기업체 목록 테이블 (※ 미정산 제외 — 정산+국책/조합만 노출)
+  const allCSettled = allC.filter(r => isPaid(r.settleType));
   document.getElementById('invCompanyCount').textContent = allCSettled.length + '건';
   document.getElementById('invCompanyBody').innerHTML = allCSettled.length ? allCSettled.map(r => {
     const total = rowTotal(r, catKeys);
     return `<tr>
       <td><strong>${r.company}</strong></td>
-      <td>
-        <div class="settle-dd-wrap" style="position:relative;display:inline-block">
-          <span class="badge ${badge[r.settleType]||'badge-blue'}" style="cursor:pointer;user-select:none" title="클릭하여 상태 변경" onclick="toggleSettleDrop(this,'${r._src}',${r._idx})">${r.settleType} ▾</span>
-          <div class="settle-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.12);min-width:120px;overflow:hidden">
-            ${buildSettleOpts(r._src, r._idx, r.settleType)}
-          </div>
-        </div>
-      </td>
+      <td>${renderSettleBadgeHTML(r.settleType, r._src, r._idx)}</td>
       <td class="num">${r.숙박 ? r.숙박.toLocaleString() : '-'}</td>
       <td class="num">${r.항공 ? r.항공.toLocaleString() : '-'}</td>
       <td class="num">${r.SRT ? r.SRT.toLocaleString() : '-'}</td>
@@ -4101,11 +4230,11 @@ function renderInvoice() {
     </tr>`;
   }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">해당 월 데이터가 없습니다</td></tr>`;
 
-  // ─ 집계 테이블 (※ 미정산 제외 — 정산만 노출)
+  // ─ 집계 테이블 (※ 미정산 제외 — 정산 + 국책/조합 통합 노출)
   const cats = ['숙박','항공','SRT','KTX','버스','택시','비자'];
   const companies = ['포스코DX','세아창원특수강','현대자동차','기아복지몰','기아 여가선용몰'];
   const catMap = {};
-  allC.filter(r => r.settleType === '정산').forEach(r => {
+  allC.filter(r => isPaid(r.settleType)).forEach(r => {
     cats.forEach(cat => {
       if(!catMap[cat]) catMap[cat] = {};
       if(!catMap[cat][r.company]) catMap[cat][r.company] = 0;
@@ -4347,7 +4476,7 @@ function renderReconcile() {
   // ── 기업체별 카드 생성 ──────────────────────────────────────────
   const grid = document.getElementById('reconcileGrid');
   grid.innerHTML = masterCompanies.map(company => {
-    // 기업인보이스: 해당 기업체의 카테고리별 합계 (정산+미정산+후정산 전부 포함)
+    // 기업인보이스: 해당 기업체의 카테고리별 합계 (정산+미정산+국책/조합 전부 포함)
     const companyRows = allC.filter(r => r.company === company);
 
     // 공급사인보이스: supplier 이름 기준으로 기업체 컬럼 합계
@@ -4379,7 +4508,7 @@ function renderReconcile() {
     if (grandMatch) totalMatch++; else totalMismatch++;
 
     // settle type 표시 (정산+미정산 포함 여부)
-    const hasUnsettled = companyRows.some(r => r.settleType !== '정산');
+    const hasUnsettled = companyRows.some(r => !isPaid(r.settleType));
     const settleLabel = hasUnsettled ? '정산+미정산 포함' : '정산 포함';
 
     return `<div class="card" style="overflow:visible">
@@ -4501,8 +4630,19 @@ function getCompanyFormData() {
 
 function submitCompanyData() {
   const d = getCompanyFormData();
-  if(!rowTotal(d, catKeys)) { alert('최소 하나의 금액을 입력하세요'); return; }
+  const total = rowTotal(d, catKeys);
+  if(!total) { alert('최소 하나의 금액을 입력하세요'); return; }
   userCompanyData.push(d);
+  // 이력 기록
+  logEdit({
+    type: 'company',
+    target: d.company,
+    period: d.year + ' ' + d.month,
+    settleType: d.settleType,
+    action: 'create',
+    diffs: [`➕ 신규 등록 (합계: ${total.toLocaleString()}원)`],
+    reason: ''
+  });
   renderCompanyInputTable();
   refreshCharts();
   saveToStorage();
@@ -4525,7 +4665,7 @@ function renderCompanyInputTable() {
     return `<tr>
       <td>${r.year} ${r.month}</td>
       <td>${r.company}</td>
-      <td><span class="badge ${r.settleType==='정산'?'badge-green':'badge-yellow'}">${r.settleType}</span></td>
+      <td>${renderSettleBadgeHTML(r.settleType, undefined, undefined, {clickable:false})}</td>
       ${catKeys.map(k => `<td class="num">${r[k] ? r[k].toLocaleString() : '-'}</td>`).join('')}
       <td class="num" style="color:var(--accent);font-weight:700">${total.toLocaleString()}</td>
       <td>
@@ -4590,18 +4730,15 @@ function saveEditCompany() {
   const allDiffs = [...metaDiffs, ...diffs];
 
   if (allDiffs.length > 0) {
-    editHistory.unshift({
-      id: Date.now(),
+    logEdit({
       type: 'company',
       target: updated.company,
       period: updated.year + ' ' + updated.month,
       settleType: updated.settleType,
+      action: 'edit',
       diffs: allDiffs,
-      reason: reason || '',
-      editedAt: new Date().toISOString()
+      reason: reason || ''
     });
-    // 최대 200건 유지
-    if (editHistory.length > 200) editHistory.length = 200;
   }
 
   document.getElementById('edit-ic-reason').value = '';
@@ -4617,6 +4754,19 @@ function saveEditCompany() {
 
 function deleteCompany(i) {
   if(!confirm('이 데이터를 삭제하시겠습니까?')) return;
+  const r = userCompanyData[i];
+  if (r) {
+    const total = rowTotal(r, catKeys);
+    logEdit({
+      type: 'company',
+      target: r.company,
+      period: r.year + ' ' + r.month,
+      settleType: r.settleType,
+      action: 'delete',
+      diffs: [`🗑 데이터 삭제 (합계: ${total.toLocaleString()}원)`],
+      reason: ''
+    });
+  }
   userCompanyData.splice(i,1);
   renderCompanyInputTable();
   renderCompanyTable(currentCompanyFilter);
@@ -4628,6 +4778,18 @@ function deleteCompany(i) {
 
 function deleteSupplier(i) {
   if(!confirm('이 데이터를 삭제하시겠습니까?')) return;
+  const r = userSupplierData[i];
+  if (r) {
+    const total = getSuppKeys().reduce((s, k) => s + (r[k] || 0), 0);
+    logEdit({
+      type: 'supplier',
+      target: `${r.category} / ${r.supplier}`,
+      period: r.year + ' ' + r.month,
+      action: 'delete',
+      diffs: [`🗑 데이터 삭제 (합계: ${total.toLocaleString()}원)`],
+      reason: ''
+    });
+  }
   userSupplierData.splice(i,1);
   renderSupplierInputTable();
   renderSupplierTable(currentSupplierFilter);
@@ -4648,8 +4810,18 @@ function submitSupplierData() {
     const el = document.getElementById(id);
     d[name] = el ? (parseInt(el.value) || 0) : 0;
   });
-  if (!keys.reduce((s,k) => s + (d[k]||0), 0)) { alert('최소 하나의 금액을 입력하세요'); return; }
+  const total = keys.reduce((s,k) => s + (d[k]||0), 0);
+  if (!total) { alert('최소 하나의 금액을 입력하세요'); return; }
   userSupplierData.push(d);
+  // 이력 기록
+  logEdit({
+    type: 'supplier',
+    target: `${d.category} / ${d.supplier}`,
+    period: d.year + ' ' + d.month,
+    action: 'create',
+    diffs: [`➕ 신규 등록 (합계: ${total.toLocaleString()}원)`],
+    reason: ''
+  });
   renderSupplierInputTable();
   refreshCharts();
   saveToStorage();
@@ -4735,17 +4907,14 @@ function saveEditSupplier() {
   const allDiffs = [...metaDiffs, ...diffs];
 
   if (allDiffs.length > 0) {
-    editHistory.unshift({
-      id: Date.now(),
+    logEdit({
       type: 'supplier',
-      target: updated.supplier,
+      target: `${updated.category} / ${updated.supplier}`,
       period: updated.year + ' ' + updated.month,
-      settleType: updated.category,
+      action: 'edit',
       diffs: allDiffs,
-      reason: reason || '',
-      editedAt: new Date().toISOString()
+      reason: reason || ''
     });
-    if (editHistory.length > 200) editHistory.length = 200;
   }
 
   document.getElementById('edit-is-reason').value = '';
@@ -4768,12 +4937,13 @@ function openHistoryModal() {
 
 function setHistTab(tab) {
   _histTab = tab;
-  ['all','company','supplier'].forEach(t => {
+  ['all','company','supplier','master'].forEach(t => {
     const btn = document.getElementById('hist-tab-' + t);
     if (!btn) return;
     const active = t === tab;
     btn.style.background = active ? 'var(--accent)' : 'transparent';
     btn.style.color      = active ? '#fff' : 'var(--muted)';
+    btn.style.fontWeight = active ? '600' : '400';
   });
   renderHistoryList();
 }
@@ -4786,8 +4956,9 @@ function renderHistoryList() {
   const filtered = editHistory.filter(h => {
     if (_histTab === 'company'  && h.type !== 'company')  return false;
     if (_histTab === 'supplier' && h.type !== 'supplier') return false;
+    if (_histTab === 'master'   && h.type !== 'master')   return false;
     if (search) {
-      const hay = (h.target + h.period + h.reason + (h.diffs||[]).join(' ')).toLowerCase();
+      const hay = (h.target + h.period + (h.reason||'') + (h.diffs||[]).join(' ')).toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -4802,38 +4973,57 @@ function renderHistoryList() {
     return;
   }
 
+  // 타입별 색상/라벨
+  const typeMap = {
+    company:  { label: '기업체별', style: 'background:rgba(37,99,235,0.12);color:#1d4ed8;border:1px solid rgba(37,99,235,0.3)' },
+    supplier: { label: '공급사별', style: 'background:rgba(8,145,178,0.12);color:#0e7490;border:1px solid rgba(8,145,178,0.3)' },
+    master:   { label: '마스터',  style: 'background:rgba(124,58,237,0.12);color:#6d28d9;border:1px solid rgba(124,58,237,0.3)' }
+  };
+  // 액션별 라벨 + 색상 (왼쪽 보더)
+  const actionMap = {
+    edit:   { label: '✏️ 수정',  border: 'var(--accent)' },
+    create: { label: '➕ 등록',  border: 'var(--success)' },
+    delete: { label: '🗑 삭제',  border: 'var(--danger)' },
+    bulk:   { label: '📊 일괄',  border: 'var(--accent2)' },
+    rename: { label: '🏷 이름변경', border: 'var(--accent3)' }
+  };
+
   el.innerHTML = filtered.map(h => {
     const dt = new Date(h.editedAt).toLocaleString('ko-KR', {
       year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'
     });
-    const typeLabel = h.type === 'company' ? '기업체별' : '공급사별';
-    const typeBadge = h.type === 'company'
-      ? 'background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3)'
-      : 'background:rgba(6,182,212,0.15);color:#22d3ee;border:1px solid rgba(6,182,212,0.3)';
+    const t = typeMap[h.type] || typeMap.company;
+    const a = actionMap[h.action] || actionMap.edit;
 
     const diffHtml = (h.diffs || []).map(d => {
-      const parts = d.split(' → ');
-      return `<div style="display:flex;align-items:baseline;gap:6px;font-size:11px;line-height:1.8">
-        <span style="color:var(--muted);min-width:80px">${parts[0]?.split(':')[0] || ''}</span>
-        <span style="color:var(--danger);opacity:0.8">${parts[0]?.split(':')[1]?.trim() || ''}</span>
-        <span style="color:var(--muted)">→</span>
-        <span style="color:var(--success);font-weight:600">${parts[1] || ''}</span>
-      </div>`;
+      // "필드: A → B" 형식이면 분리해서 강조, 아니면 통째로 출력
+      const arrowMatch = d.match(/^(.+?):\s*(.+?)\s*→\s*(.+)$/);
+      if (arrowMatch) {
+        return `<div style="display:flex;align-items:baseline;gap:6px;font-size:11px;line-height:1.8">
+          <span style="color:var(--muted);min-width:80px;flex-shrink:0">${escapeHtml(arrowMatch[1])}</span>
+          <span style="color:var(--danger);opacity:0.85">${escapeHtml(arrowMatch[2])}</span>
+          <span style="color:var(--muted)">→</span>
+          <span style="color:var(--success);font-weight:600">${escapeHtml(arrowMatch[3])}</span>
+        </div>`;
+      }
+      // 액션 메시지 (삭제/등록/일괄 등) - 한 줄로
+      return `<div style="font-size:12px;line-height:1.8;color:var(--text);font-weight:500">${escapeHtml(d)}</div>`;
     }).join('');
 
-    return `<div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:14px 16px;margin-bottom:10px">
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${a.border};border-radius:10px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(30,41,59,0.04)">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-        <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;${typeBadge}">${typeLabel}</span>
-        <span style="font-size:13px;font-weight:700;color:var(--text)">${h.target}</span>
-        <span style="font-size:11px;color:var(--muted)">${h.period}</span>
-        ${h.settleType ? `<span style="font-size:11px;color:var(--muted)">${h.settleType}</span>` : ''}
+        <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;${t.style}">${t.label}</span>
+        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px;background:var(--surface2);color:var(--text);border:1px solid var(--border)">${a.label}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text)">${escapeHtml(h.target)}</span>
+        ${h.period && h.period !== '-' ? `<span style="font-size:11px;color:var(--muted)">${escapeHtml(h.period)}</span>` : ''}
+        ${h.settleType ? `<span style="font-size:11px;color:var(--muted)">${escapeHtml(h.settleType)}</span>` : ''}
         <span style="margin-left:auto;font-size:10px;color:var(--muted);font-family:var(--mono)">${dt}</span>
-        <button onclick="deleteHistoryItem(${h.id})" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--danger);border-radius:6px;padding:2px 8px;font-size:10px;cursor:pointer">✕</button>
+        <button onclick="deleteHistoryItem(${h.id})" style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);color:var(--danger);border-radius:6px;padding:2px 8px;font-size:10px;cursor:pointer">✕</button>
       </div>
-      ${diffHtml ? `<div style="background:var(--surface);border-radius:7px;padding:10px 12px;margin-bottom:8px">${diffHtml}</div>` : ''}
-      ${h.reason ? `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--warning);background:rgba(245,158,11,0.07);border-radius:6px;padding:8px 12px">
-        <span style="flex-shrink:0">✏️ 사유:</span>
-        <span style="color:var(--text)">${h.reason}</span>
+      ${diffHtml ? `<div style="background:var(--surface2);border-radius:7px;padding:10px 12px;margin-bottom:${h.reason?'8px':'0'}">${diffHtml}</div>` : ''}
+      ${h.reason ? `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--text);background:rgba(217,119,6,0.06);border:1px solid rgba(217,119,6,0.2);border-radius:6px;padding:8px 12px">
+        <span style="flex-shrink:0;color:var(--warning);font-weight:600">✏️ 사유:</span>
+        <span>${escapeHtml(h.reason)}</span>
       </div>` : ''}
     </div>`;
   }).join('');
@@ -5205,8 +5395,8 @@ function renderCompanyReport() {
 
   // ── KPI 계산 ──
   const totalAmt     = allC.reduce((s,r) => s + catKeys.reduce((ss,k) => ss+(r[k]||0),0), 0);
-  const settledAmt   = allC.filter(r=>r.settleType==='정산').reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
-  const unsettledAmt = allC.filter(r=>r.settleType!=='정산').reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
+  const settledAmt   = allC.filter(r=>isPaid(r.settleType)).reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
+  const unsettledAmt = allC.filter(r=>!isPaid(r.settleType)).reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
 
   // KPI 렌더
   const kpiRow = document.getElementById('rpt-kpi-row');
@@ -5252,7 +5442,7 @@ function renderCompanyReport() {
   const monthSettled = monthFiltered.map(ym => {
     const [y,m] = ym.split(' ');
     return _allCData
-      .filter(r => (company==='all'||r.company===company) && r.year===y && r.month===m && r.settleType==='정산')
+      .filter(r => (company==='all'||r.company===company) && r.year===y && r.month===m && isPaid(r.settleType))
       .reduce((s,r) => s + catKeys.reduce((ss,k) => ss+(r[k]||0), 0), 0);
   });
 
@@ -5386,8 +5576,8 @@ function renderCompanyReport() {
   // ── 정산 구분 현황 ──
   const settleBarsEl = document.getElementById('rptSettleBars');
   if (settleBarsEl) {
-    const settleTypes = ['정산','미정산','후정산','국책/조합'];
-    const settleColors = { '정산':'#10b981','미정산':'#ef4444','후정산':'#f59e0b','국책/조합':'#8b5cf6' };
+    const settleTypes = ['정산','미정산','국책/조합'];
+    const settleColors = { '정산':'#059669','미정산':'#dc2626','국책/조합':'#7c3aed' };
     const settleMap = {};
     settleTypes.forEach(t => {
       settleMap[t] = allC.filter(r=>r.settleType===t).reduce((s,r)=>s+catKeys.reduce((ss,k)=>ss+(r[k]||0),0),0);
@@ -5411,8 +5601,6 @@ function renderCompanyReport() {
   const detailBody = document.getElementById('rptDetailBody');
   const detailTable = document.getElementById('rptDetailTable');
   if (detailBody && detailTable) {
-    const settleColors2 = { '정산':'badge-green','미정산':'badge-red','후정산':'badge-yellow','국책/조합':'badge-purple' };
-
     if (company === 'all') {
       // 전체: 년도/월/정산구분으로 그룹 합산
       detailTable.querySelector('thead tr').innerHTML = `
@@ -5434,7 +5622,7 @@ function renderCompanyReport() {
         return `<tr>
           <td style="color:var(--muted)">${r.year}</td>
           <td>${r.month}</td>
-          <td><span class="badge ${settleColors2[r.settleType]||'badge-blue'}">${r.settleType}</span></td>
+          <td>${renderSettleBadgeHTML(r.settleType, undefined, undefined, {clickable:false})}</td>
           ${catKeys.map(k=>`<td class="num">${r[k]?r[k].toLocaleString():'-'}</td>`).join('')}
           <td class="num" style="color:var(--accent);font-weight:700">${total.toLocaleString()}</td>
         </tr>`;
@@ -5459,7 +5647,7 @@ function renderCompanyReport() {
         return `<tr>
           <td style="color:var(--muted)">${r.year}</td>
           <td>${r.month}</td>
-          <td><span class="badge ${settleColors2[r.settleType]||'badge-blue'}">${r.settleType}</span></td>
+          <td>${renderSettleBadgeHTML(r.settleType, undefined, undefined, {clickable:false})}</td>
           ${catKeys.map(k=>`<td class="num">${r[k]?r[k].toLocaleString():'-'}</td>`).join('')}
           <td class="num" style="color:var(--accent);font-weight:700">${total.toLocaleString()}</td>
         </tr>`;
@@ -5854,7 +6042,7 @@ function downloadCompanyTemplate() {
 
   // 가이드 행 (회색 안내) + 헤더 + 샘플
   const aoa = [
-    ['※ 이 행은 삭제 후 업로드하세요 — 년도: "2026년" 형식 / 월: "01월" 형식 / 정산구분: 정산·미정산·후정산·국책/조합 / 상태: 처리중·완료·보류'],
+    ['※ 이 행은 삭제 후 업로드하세요 — 년도: "2026년" 형식 / 월: "01월" 형식 / 정산구분: 정산·미정산·국책/조합 / 상태: 처리중·완료·보류'],
     headers,
     ...sampleRows
   ];
@@ -5949,7 +6137,7 @@ function uploadCompanyExcel(event) {
           errors.push(`라인 ${lineNo}: "${company}"는 마스터에 없는 기업체입니다 (마스터 관리에서 먼저 추가하세요)`);
           return;
         }
-        const validSettle = ['정산','미정산','후정산','국책/조합'];
+        const validSettle = ['정산','미정산','국책/조합'];
         if (!validSettle.includes(settleType)) {
           errors.push(`라인 ${lineNo}: 정산구분은 ${validSettle.join('/')} 중 하나여야 합니다 (현재값: "${settleType}")`);
           return;
@@ -5995,6 +6183,34 @@ function uploadCompanyExcel(event) {
       }
 
       parsedRows.forEach(r => userCompanyData.push(r));
+      // 이력 기록: 기업체별로 묶어서 1건씩, 너무 많으면 요약 1건
+      if (parsedRows.length <= 10) {
+        // 10건 이하면 각각 기록
+        parsedRows.forEach(r => {
+          const tot = rowTotal(r, catKeys);
+          logEdit({
+            type: 'company',
+            target: r.company,
+            period: r.year + ' ' + r.month,
+            settleType: r.settleType,
+            action: 'bulk',
+            diffs: [`📊 엑셀 일괄 등록 (합계: ${tot.toLocaleString()}원)`],
+            reason: ''
+          });
+        });
+      } else {
+        // 10건 초과면 요약 1건만
+        const grandTotal = parsedRows.reduce((s, r) => s + rowTotal(r, catKeys), 0);
+        const companies = [...new Set(parsedRows.map(r => r.company))];
+        logEdit({
+          type: 'company',
+          target: `${parsedRows.length}건 일괄 등록`,
+          period: '-',
+          action: 'bulk',
+          diffs: [`📊 엑셀 일괄 업로드: ${parsedRows.length}건 (${companies.slice(0,3).join(', ')}${companies.length>3?` 외 ${companies.length-3}개사`:''}) — 합계 ${grandTotal.toLocaleString()}원`],
+          reason: ''
+        });
+      }
       renderCompanyInputTable();
       renderCompanyTable(currentCompanyFilter || 'all');
       if (typeof refreshCharts === 'function') refreshCharts();
@@ -6152,6 +6368,31 @@ function uploadSupplierExcel(event) {
       }
 
       parsedRows.forEach(r => userSupplierData.push(r));
+      // 이력 기록
+      if (parsedRows.length <= 10) {
+        parsedRows.forEach(r => {
+          const tot = masterCompanies.reduce((s, c) => s + (r[c] || 0), 0);
+          logEdit({
+            type: 'supplier',
+            target: `${r.category} / ${r.supplier}`,
+            period: r.year + ' ' + r.month,
+            action: 'bulk',
+            diffs: [`📊 엑셀 일괄 등록 (합계: ${tot.toLocaleString()}원)`],
+            reason: ''
+          });
+        });
+      } else {
+        const grandTotal = parsedRows.reduce((s, r) => s + masterCompanies.reduce((ss, c) => ss + (r[c] || 0), 0), 0);
+        const suppliers = [...new Set(parsedRows.map(r => r.supplier))];
+        logEdit({
+          type: 'supplier',
+          target: `${parsedRows.length}건 일괄 등록`,
+          period: '-',
+          action: 'bulk',
+          diffs: [`📊 엑셀 일괄 업로드: ${parsedRows.length}건 (${suppliers.slice(0,3).join(', ')}${suppliers.length>3?` 외 ${suppliers.length-3}개`:''}) — 합계 ${grandTotal.toLocaleString()}원`],
+          reason: ''
+        });
+      }
       renderSupplierInputTable();
       renderSupplierTable(currentSupplierFilter || 'all');
       if (typeof refreshCharts === 'function') refreshCharts();
