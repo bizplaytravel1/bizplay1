@@ -2285,7 +2285,7 @@
         <div class="form-group">
           <label class="form-label">공급사</label>
           <select class="form-select" id="edit-is-supplier">
-            <option>노랑풍선(항공)</option><option>야놀자클라우드</option><option>온다</option>
+            <option>노랑풍선(항공)</option><option>놀유니버스</option><option>온다</option>
             <option>DIDA</option><option>Yellow Balloon</option><option>GGT</option>
             <option>파르나스호텔</option><option>Ohmyhotel</option><option>라한프라퍼티스</option>
             <option>카인트호텔</option><option>고속버스</option><option>SRT</option>
@@ -2456,7 +2456,7 @@ let companyData = [
 let supplierData = [
   { year:'2026년', month:'01월', category:'항공', supplier:'노랑풍선(항공)', 포스코DX:29286280, 세아창원특수강:4934700, 현대자동차:4632880, 기아복지몰:155351400, '기아 여가선용몰':9036700 },
   { year:'2026년', month:'01월', category:'열차', supplier:'SRT', 포스코DX:653000, 세아창원특수강:70300, 현대자동차:3509000, 기아복지몰:9774500, '기아 여가선용몰':1425000 },
-  { year:'2026년', month:'01월', category:'숙박', supplier:'야놀자클라우드', 포스코DX:5982800, 세아창원특수강:921400, 현대자동차:12554180, 기아복지몰:106177610, '기아 여가선용몰':10638320 },
+  { year:'2026년', month:'01월', category:'숙박', supplier:'놀유니버스', 포스코DX:5982800, 세아창원특수강:921400, 현대자동차:12554180, 기아복지몰:106177610, '기아 여가선용몰':10638320 },
   { year:'2026년', month:'01월', category:'숙박', supplier:'온다', 포스코DX:128330, 세아창원특수강:220000, 현대자동차:323000, 기아복지몰:16053290, '기아 여가선용몰':1472400 },
   { year:'2026년', month:'01월', category:'숙박', supplier:'DIDA', 포스코DX:158298, 세아창원특수강:0, 현대자동차:519893, 기아복지몰:19623901, '기아 여가선용몰':1096558 },
   { year:'2026년', month:'01월', category:'숙박', supplier:'Yellow Balloon', 포스코DX:11004622, 세아창원특수강:169745, 현대자동차:722493, 기아복지몰:11144975, '기아 여가선용몰':4310107 },
@@ -2478,7 +2478,7 @@ let masterCompanies = [
 // 공급사 마스터 (이름 + 카테고리)
 let masterSuppliers = [
   { name:'노랑풍선(항공)', category:'항공' },
-  { name:'야놀자클라우드',  category:'숙박' },
+  { name:'놀유니버스',  category:'숙박' },
   { name:'온다',           category:'숙박' },
   { name:'DIDA',           category:'숙박' },
   { name:'Yellow Balloon', category:'숙박' },
@@ -3914,6 +3914,64 @@ async function saveToStorage() {
   }
 }
 
+// ════════════════════════════════════════════════════════════════
+// 🔄 자동 데이터 마이그레이션 — supplier/company 이름 변경 자동 적용
+// ════════════════════════════════════════════════════════════════
+// 데이터(localStorage/Firebase)에 남아있는 옛 이름을 새 이름으로 변환
+// 페이지가 로드될 때마다 실행되며, 이미 변환된 데이터에는 영향 없음 (idempotent)
+const SUPPLIER_NAME_MIGRATIONS = [
+  // 옛 이름 → 새 이름
+  { from: '야놀자클라우드', to: '놀유니버스' },
+  // 향후 다른 이름 변경 시 여기에 추가
+];
+
+function runSupplierNameMigrations() {
+  let totalChanged = 0;
+  SUPPLIER_NAME_MIGRATIONS.forEach(({ from, to }) => {
+    let changed = 0;
+    // 1) 데이터 supplier 필드 변경
+    [supplierData, userSupplierData].forEach(arr => {
+      arr.forEach(r => {
+        if (r.supplier === from) {
+          r.supplier = to;
+          changed++;
+        }
+      });
+    });
+    // 2) 마스터에서 옛 이름이 있으면 새 이름으로 변경 (중복 방지)
+    masterSuppliers.forEach(s => {
+      if (s.name === from) {
+        // 이미 새 이름이 있는지 체크
+        const hasNew = masterSuppliers.some(x => x.name === to);
+        if (!hasNew) {
+          s.name = to;
+        }
+      }
+    });
+    // 마스터에 옛 이름이 중복으로 남아있으면 제거
+    for (let i = masterSuppliers.length - 1; i >= 0; i--) {
+      if (masterSuppliers[i].name === from && masterSuppliers.some(s => s.name === to)) {
+        masterSuppliers.splice(i, 1);
+      }
+    }
+    if (changed > 0) {
+      console.log(`[마이그레이션] "${from}" → "${to}": ${changed}건 변환`);
+      totalChanged += changed;
+    }
+  });
+
+  // 한 건이라도 변환됐으면 saveToStorage로 영구 저장 (다음 새로고침에선 변환 안 됨)
+  if (totalChanged > 0) {
+    console.log(`[마이그레이션] 총 ${totalChanged}건 변환됨, 영구 저장 시작...`);
+    saveToStorage().then(() => {
+      console.log('[마이그레이션] 영구 저장 완료');
+    }).catch(err => {
+      console.error('[마이그레이션] 저장 실패:', err);
+    });
+  }
+  return totalChanged;
+}
+
 // Firebase 실시간 리스너 — 다른 사람이 수정하면 자동 반영
 function loadFromStorage() {
   if (!window._firebaseReady) {
@@ -3935,6 +3993,10 @@ function loadFromStorage() {
         if (d.reconcileMemos) Object.assign(reconcileMemos, d.reconcileMemos);
         if (d.reportMemos)    Object.assign(reportMemos, d.reportMemos);
         if (d.editHistory)    editHistory.splice(0, editHistory.length, ...d.editHistory);
+
+        // ── 자동 supplier 이름 마이그레이션 ──
+        runSupplierNameMigrations();
+
         renderCompanyTable(currentCompanyFilter || 'all');
         renderSupplierTable(currentSupplierFilter || 'all');
         renderCompanyInputTable();
@@ -3984,6 +4046,10 @@ function loadFromStorage() {
       }
       // editHistory는 항상 동기화 (빈 배열도 동기화 — 다른 기기에서 삭제 시 반영)
       editHistory.splice(0, editHistory.length, ...(d.editHistory || []));
+
+      // ── 자동 supplier 이름 마이그레이션 ──
+      runSupplierNameMigrations();
+
       renderCompanyTable(currentCompanyFilter || 'all');
       renderSupplierTable(currentSupplierFilter || 'all');
       renderCompanyInputTable();
