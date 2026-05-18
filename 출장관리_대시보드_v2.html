@@ -2628,7 +2628,11 @@ async function confirmEditMasterCompany(i) {
   renderSupplierTable(currentSupplierFilter || 'all');
   renderCompanyInputTable();
   renderSupplierInputTable();
-  if (typeof initCharts === 'function') initCharts();
+  if (typeof initCharts === 'function') initCharts();  // 종합 대시보드 차트들 재생성
+  // 인보이스/일치유무/리포트 — active일 때만 호출 (active 아닐 때는 다음 진입 시 자동 갱신)
+  if (document.getElementById('invoice')?.classList.contains('active')) renderInvoice();
+  if (document.getElementById('reconcile')?.classList.contains('active')) renderReconcile();
+  if (document.getElementById('company-report')?.classList.contains('active') && typeof renderCompanyReport === 'function') renderCompanyReport();
 
   // 7) 저장 (await로 완료까지 대기 — 새로고침 시 데이터 유실 방지)
   try {
@@ -2697,20 +2701,35 @@ async function confirmEditMasterSupplier(i) {
   // 마스터 갱신
   masterSuppliers[i] = { name: newName, category: newCat };
 
-  // 데이터 반영 (supplier 필드 + category 필드)
-  [supplierData, userSupplierData].forEach(arr => {
-    arr.forEach(r => {
-      if (r.supplier === oldName) {
-        r.supplier = newName;
-        r.category = newCat;
-      }
-    });
+  // 데이터 반영 (supplier 필드 + category 필드) — 변경 건수 추적
+  let baseChanged = 0, userChanged = 0;
+  supplierData.forEach(r => {
+    if (r.supplier === oldName) {
+      r.supplier = newName;
+      r.category = newCat;
+      baseChanged++;
+    }
   });
+  userSupplierData.forEach(r => {
+    if (r.supplier === oldName) {
+      r.supplier = newName;
+      r.category = newCat;
+      userChanged++;
+    }
+  });
+  console.log('[마스터 수정] 공급사 데이터 변경 결과: 시드데이터', baseChanged, '건, 사용자데이터', userChanged, '건');
+  if (baseChanged === 0 && userChanged === 0) {
+    console.warn('[마스터 수정] ⚠ 변경된 supplier 행이 0건입니다. oldName:', JSON.stringify(oldName), '— 데이터 supplier 필드와 매칭이 안 됩니다.');
+    // 진단: 실제 데이터에 어떤 supplier 이름이 있는지 출력
+    const allSupplierNames = [...new Set([...supplierData, ...userSupplierData].map(r => r.supplier))];
+    console.warn('[마스터 수정] 실제 데이터의 supplier 목록:', allSupplierNames);
+  }
 
   // 이력 기록
   const changes = [];
   if (oldName !== newName) changes.push(`공급사명: "${oldName}" → "${newName}"`);
   if (oldCat !== newCat) changes.push(`카테고리: ${oldCat} → ${newCat}`);
+  changes.push(`데이터 행 갱신: 시드 ${baseChanged}건 + 사용자 ${userChanged}건`);
   logEdit({
     type: 'master',
     target: '공급사 마스터',
@@ -2721,18 +2740,26 @@ async function confirmEditMasterSupplier(i) {
   });
   console.log('[마스터 수정] 이력 기록 완료, editHistory 길이:', editHistory.length);
 
-  // UI 새로고침
+  // UI 새로고침 (모든 관련 화면 강제 재렌더링)
   renderMasterSupplierList();
   refreshAllSupplierDropdowns();
   renderSupplierTable(currentSupplierFilter || 'all');
   renderSupplierInputTable();
-  if (typeof initCharts === 'function') initCharts();
+  if (typeof initCharts === 'function') initCharts();  // 종합 대시보드 차트들 재생성
+  // 인보이스/일치유무/리포트 — active일 때만 호출 (active 아닐 때는 다음 진입 시 자동 갱신)
+  if (document.getElementById('invoice')?.classList.contains('active')) renderInvoice();
+  if (document.getElementById('reconcile')?.classList.contains('active')) renderReconcile();
+  if (document.getElementById('company-report')?.classList.contains('active') && typeof renderCompanyReport === 'function') renderCompanyReport();
 
   // 저장 (await로 완료까지 대기)
   try {
     await saveToStorage();
     console.log('[마스터 수정] 저장 완료');
-    toast(`✏️ "${oldName}" → "${newName}" 변경 및 저장 완료`);
+    if (baseChanged === 0 && userChanged === 0) {
+      toast(`✏️ "${oldName}" → "${newName}" 변경됨 (단, 해당 공급사 데이터가 없어 차트는 변경 없음)`);
+    } else {
+      toast(`✏️ "${oldName}" → "${newName}" 변경 완료 (${baseChanged + userChanged}건 데이터 갱신)`);
+    }
   } catch(err) {
     console.error('[마스터 수정] 저장 실패:', err);
     toast(`⚠ 저장 실패: ${err.message}`);
@@ -4332,7 +4359,9 @@ function renderInvoice() {
   let allCSettled = allC.filter(r => isPaid(r.settleType));
   if (compFilter !== 'all') allCSettled = allCSettled.filter(r => r.company === compFilter);
   document.getElementById('invCompanyCount').textContent = allCSettled.length + '건';
-  document.getElementById('invCompanyBody').innerHTML = allCSettled.length ? allCSettled.map(r => {
+
+  const compCatKeys = ['숙박','항공','SRT','KTX','버스','택시','비자'];
+  const compBodyHTML = allCSettled.length ? allCSettled.map(r => {
     const total = rowTotal(r, catKeys);
     return `<tr>
       <td><strong>${r.company}</strong></td>
@@ -4354,6 +4383,20 @@ function renderInvoice() {
     </tr>`;
   }).join('') : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">해당 월에 정산 데이터가 없습니다</td></tr>`;
 
+  // 기업체 목록 합계 행
+  let compTotalRowHTML = '';
+  if (allCSettled.length) {
+    const colSums = compCatKeys.map(k => allCSettled.reduce((s,r) => s + (r[k]||0), 0));
+    const grandSum = colSums.reduce((s,v) => s+v, 0);
+    compTotalRowHTML = `<tr style="border-top:2px solid var(--border);background:var(--surface2);font-weight:700">
+      <td colspan="2" style="font-weight:800">합계 (${allCSettled.length}건)</td>
+      ${colSums.map(v => `<td class="num" style="font-weight:700">${v ? v.toLocaleString() : '-'}</td>`).join('')}
+      <td class="num" style="color:var(--accent);font-weight:800">${grandSum.toLocaleString()}</td>
+      <td></td>
+    </tr>`;
+  }
+  document.getElementById('invCompanyBody').innerHTML = compBodyHTML + compTotalRowHTML;
+
   // ─ 공급사 목록 테이블 (카테고리/공급사 필터 적용)
   const supCatFilter = document.getElementById('inv-sup-cat-filter')?.value || 'all';
   const supFilter    = document.getElementById('inv-sup-filter')?.value    || 'all';
@@ -4362,7 +4405,9 @@ function renderInvoice() {
   if (supFilter    !== 'all') allSFiltered = allSFiltered.filter(r => r.supplier === supFilter);
   const catColors = { '숙박':'badge-blue','항공':'badge-cyan','열차':'badge-purple','버스':'badge-green','택시':'badge-yellow','비자':'badge-red','렌터카':'badge-blue' };
   document.getElementById('invSupplierCount').textContent = allSFiltered.length + '건';
-  document.getElementById('invSupplierBody').innerHTML = allSFiltered.length ? allSFiltered.map(r => {
+
+  // 공급사 목록 본문
+  const supBodyHTML = allSFiltered.length ? allSFiltered.map(r => {
     const total = getSuppKeys().reduce((s,k) => s + (r[k]||0), 0);
     return `<tr>
       <td><span class="badge ${catColors[r.category]||'badge-blue'}">${r.category}</span></td>
@@ -4378,6 +4423,20 @@ function renderInvoice() {
     </tr>`;
   }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">해당 조건에 맞는 데이터가 없습니다</td></tr>`;
 
+  // 공급사 목록 합계 행 (필터된 데이터 기준)
+  let supTotalRowHTML = '';
+  if (allSFiltered.length) {
+    const colTotals = getSuppKeys().map(k => allSFiltered.reduce((s,r) => s + (r[k]||0), 0));
+    const grandTotal = colTotals.reduce((s,v) => s+v, 0);
+    supTotalRowHTML = `<tr style="border-top:2px solid var(--border);background:var(--surface2);font-weight:700">
+      <td colspan="2" style="font-weight:800">합계 (${allSFiltered.length}건)</td>
+      ${colTotals.map(v => `<td class="num" style="font-weight:700">${v ? v.toLocaleString() : '-'}</td>`).join('')}
+      <td class="num" style="color:var(--accent);font-weight:800">${grandTotal.toLocaleString()}</td>
+      <td></td>
+    </tr>`;
+  }
+  document.getElementById('invSupplierBody').innerHTML = supBodyHTML + supTotalRowHTML;
+
   // ─ 집계 테이블 (※ 미정산 제외 — 정산 + 국책/조합 통합 노출)
   const cats = ['숙박','항공','SRT','KTX','버스','택시','비자'];
   const companies = [...masterCompanies];  // ※ 마스터 변경 시 자동 반영
@@ -4390,7 +4449,8 @@ function renderInvoice() {
     });
   });
 
-  document.getElementById('invoiceTable').innerHTML = cats.map(cat => {
+  // 본문 행들
+  const invRowsHTML = cats.map(cat => {
     const cells = companies.map(co => {
       const v = (catMap[cat]||{})[co] || 0;
       return `<td class="num"><span style="color:var(--success)">${v ? v.toLocaleString() : '-'}</span></td>`;
@@ -4402,6 +4462,19 @@ function renderInvoice() {
       <td class="num" style="color:var(--accent);font-weight:700">${rowTotal2 ? rowTotal2.toLocaleString() : '-'}</td>
     </tr>`;
   }).join('');
+
+  // 합계 행 (기업체별 컬럼 합계 + 총 합계)
+  const compTotals = companies.map(co =>
+    cats.reduce((s, cat) => s + ((catMap[cat]||{})[co] || 0), 0)
+  );
+  const grandSum = compTotals.reduce((s,v) => s+v, 0);
+  const invTotalRowHTML = `<tr style="border-top:2px solid var(--border);background:var(--surface2);font-weight:700">
+    <td style="font-weight:800">합계</td>
+    ${compTotals.map(v => `<td class="num" style="font-weight:700;color:var(--success)">${v ? v.toLocaleString() : '-'}</td>`).join('')}
+    <td class="num" style="color:var(--accent);font-weight:800">${grandSum ? grandSum.toLocaleString() : '-'}</td>
+  </tr>`;
+
+  document.getElementById('invoiceTable').innerHTML = invRowsHTML + invTotalRowHTML;
 }
 
 // ===================== RECONCILE MEMO =====================
