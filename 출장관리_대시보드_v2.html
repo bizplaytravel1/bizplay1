@@ -2562,7 +2562,7 @@ function startEditMasterCompany(i) {
 }
 
 // ── 기업체명 변경 적용 (관련 데이터 모두 갱신)
-function confirmEditMasterCompany(i) {
+async function confirmEditMasterCompany(i) {
   const inp = document.getElementById(`mc-edit-input-${i}`);
   if (!inp) return;
   const oldName = masterCompanies[i];
@@ -2571,6 +2571,8 @@ function confirmEditMasterCompany(i) {
   if (newName === oldName) { renderMasterCompanyList(); return; }
   if (masterCompanies.includes(newName)) { toast('⚠ 이미 존재하는 기업체입니다'); inp.focus(); return; }
   if (!confirm(`"${oldName}" → "${newName}"\n\n기업체명을 변경합니다. 이 기업체로 입력된 기존 정산/공급사 데이터의 명칭도 함께 변경됩니다. 계속하시겠습니까?`)) return;
+
+  console.log('[마스터 수정] 기업체명 변경 시작:', oldName, '→', newName);
 
   // 1) 마스터 갱신
   masterCompanies[i] = newName;
@@ -2599,13 +2601,27 @@ function confirmEditMasterCompany(i) {
       updatedReport[k] = reportMemos[k];
     }
   });
-  reportMemos = updatedReport;
+  // reportMemos를 in-place 갱신 (재할당하지 않음 - closure 안전성)
+  Object.keys(reportMemos).forEach(k => delete reportMemos[k]);
+  Object.assign(reportMemos, updatedReport);
+
   if (reconcileMemos[oldName] !== undefined) {
     reconcileMemos[newName] = reconcileMemos[oldName];
     delete reconcileMemos[oldName];
   }
 
-  // 5) UI 새로고침
+  // 5) 이력 기록 (저장 전에 먼저 — saveToStorage가 editHistory도 포함하도록)
+  logEdit({
+    type: 'master',
+    target: '기업체 마스터',
+    period: '-',
+    action: 'rename',
+    diffs: [`기업체명 변경: "${oldName}" → "${newName}" (관련 데이터 일괄 갱신)`],
+    reason: ''
+  });
+  console.log('[마스터 수정] 이력 기록 완료, editHistory 길이:', editHistory.length);
+
+  // 6) UI 새로고침
   renderMasterCompanyList();
   refreshAllCompanyDropdowns();
   refreshSupplierCompanyAmounts();
@@ -2615,19 +2631,16 @@ function confirmEditMasterCompany(i) {
   renderCompanyInputTable();
   renderSupplierInputTable();
   if (typeof initCharts === 'function') initCharts();
-  // 이력 기록
-  if (typeof logEdit === 'function') {
-    logEdit({
-      type: 'master',
-      target: '기업체 마스터',
-      period: '-',
-      action: 'rename',
-      diffs: [`기업체명 변경: "${oldName}" → "${newName}" (관련 데이터 일괄 갱신)`],
-      reason: ''
-    });
+
+  // 7) 저장 (await로 완료까지 대기 — 새로고침 시 데이터 유실 방지)
+  try {
+    await saveToStorage();
+    console.log('[마스터 수정] 저장 완료');
+    toast(`✏️ "${oldName}" → "${newName}" 변경 및 저장 완료`);
+  } catch(err) {
+    console.error('[마스터 수정] 저장 실패:', err);
+    toast(`⚠ 저장 실패: ${err.message}`);
   }
-  saveToStorage();
-  toast(`✏️ "${oldName}" → "${newName}" 변경됨`);
 }
 
 function renderMasterSupplierList() {
@@ -2666,7 +2679,7 @@ function startEditMasterSupplier(i) {
   inp.select();
 }
 
-function confirmEditMasterSupplier(i) {
+async function confirmEditMasterSupplier(i) {
   const nameInp = document.getElementById(`ms-edit-name-${i}`);
   const catInp  = document.getElementById(`ms-edit-cat-${i}`);
   if (!nameInp || !catInp) return;
@@ -2681,6 +2694,8 @@ function confirmEditMasterSupplier(i) {
   }
   if (!confirm(`"${oldName}" → "${newName}"\n카테고리: ${oldCat} → ${newCat}\n\n공급사 정보를 변경합니다. 이 공급사로 입력된 기존 데이터의 명칭/카테고리도 함께 변경됩니다. 계속하시겠습니까?`)) return;
 
+  console.log('[마스터 수정] 공급사 변경 시작:', oldName, '→', newName, '/', oldCat, '→', newCat);
+
   // 마스터 갱신
   masterSuppliers[i] = { name: newName, category: newCat };
 
@@ -2694,27 +2709,36 @@ function confirmEditMasterSupplier(i) {
     });
   });
 
+  // 이력 기록
+  const changes = [];
+  if (oldName !== newName) changes.push(`공급사명: "${oldName}" → "${newName}"`);
+  if (oldCat !== newCat) changes.push(`카테고리: ${oldCat} → ${newCat}`);
+  logEdit({
+    type: 'master',
+    target: '공급사 마스터',
+    period: '-',
+    action: 'rename',
+    diffs: changes,
+    reason: ''
+  });
+  console.log('[마스터 수정] 이력 기록 완료, editHistory 길이:', editHistory.length);
+
+  // UI 새로고침
   renderMasterSupplierList();
   refreshAllSupplierDropdowns();
   renderSupplierTable(currentSupplierFilter || 'all');
   renderSupplierInputTable();
   if (typeof initCharts === 'function') initCharts();
-  // 이력 기록
-  if (typeof logEdit === 'function') {
-    const changes = [];
-    if (oldName !== newName) changes.push(`공급사명: "${oldName}" → "${newName}"`);
-    if (oldCat !== newCat) changes.push(`카테고리: ${oldCat} → ${newCat}`);
-    logEdit({
-      type: 'master',
-      target: '공급사 마스터',
-      period: '-',
-      action: 'rename',
-      diffs: changes,
-      reason: ''
-    });
+
+  // 저장 (await로 완료까지 대기)
+  try {
+    await saveToStorage();
+    console.log('[마스터 수정] 저장 완료');
+    toast(`✏️ "${oldName}" → "${newName}" 변경 및 저장 완료`);
+  } catch(err) {
+    console.error('[마스터 수정] 저장 실패:', err);
+    toast(`⚠ 저장 실패: ${err.message}`);
   }
-  saveToStorage();
-  toast(`✏️ "${oldName}" → "${newName}" 변경됨`);
 }
 
 function addMasterCompany() {
@@ -3694,7 +3718,12 @@ async function saveToStorage() {
     masterCompanies, masterSuppliers, masterCategories, reconcileMemos, reportMemos, editHistory,
     savedAt: new Date().toISOString()
   };
-  try { localStorage.setItem('travel_dashboard_backup', JSON.stringify(payload)); } catch(e) {}
+  try {
+    localStorage.setItem('travel_dashboard_backup', JSON.stringify(payload));
+    console.log('[saveToStorage] localStorage 저장 완료. masterCompanies:', masterCompanies.length, '개, editHistory:', editHistory.length, '건');
+  } catch(e) {
+    console.error('[saveToStorage] localStorage 저장 실패:', e);
+  }
 
   if (!window._firebaseReady) {
     // Firebase 없음 → localStorage만 사용, 이후 로직은 정상 실행
@@ -3707,9 +3736,11 @@ async function saveToStorage() {
     await window._firebaseSet(dbRef, payload);
     const dt = new Date().toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
     setSyncStatus('synced', dt);
+    console.log('[saveToStorage] Firebase 저장 완료');
   } catch(e) {
-    console.error('Firebase 저장 오류:', e);
+    console.error('[saveToStorage] Firebase 저장 오류:', e);
     setSyncStatus('error');
+    // ※ Firebase 실패해도 localStorage는 이미 저장됨 → throw하지 않음
   }
 }
 
@@ -3758,6 +3789,7 @@ function loadFromStorage() {
   window._firebaseOnValue(dbRef, (snapshot) => {
     const d = snapshot.val();
     if (d) {
+      console.log('[loadFromStorage] Firebase 데이터 수신. masterCompanies:', (d.masterCompanies||[]).length, '개, editHistory:', (d.editHistory||[]).length, '건, savedAt:', d.savedAt);
       companyData.splice(0, companyData.length, ...(d.companyData || []));
       supplierData.splice(0, supplierData.length, ...(d.supplierData || []));
       userCompanyData.splice(0, userCompanyData.length, ...(d.userCompanyData || []));
@@ -3771,15 +3803,17 @@ function loadFromStorage() {
       if (d.masterCategories && d.masterCategories.length) {
         masterCategories.splice(0, masterCategories.length, ...d.masterCategories);
       }
+      // 메모는 in-place 갱신 (옛 키 제거 + 새 키 추가)
       if (d.reconcileMemos) {
+        Object.keys(reconcileMemos).forEach(k => delete reconcileMemos[k]);
         Object.assign(reconcileMemos, d.reconcileMemos);
       }
       if (d.reportMemos) {
+        Object.keys(reportMemos).forEach(k => delete reportMemos[k]);
         Object.assign(reportMemos, d.reportMemos);
       }
-      if (d.editHistory) {
-        editHistory.splice(0, editHistory.length, ...d.editHistory);
-      }
+      // editHistory는 항상 동기화 (빈 배열도 동기화 — 다른 기기에서 삭제 시 반영)
+      editHistory.splice(0, editHistory.length, ...(d.editHistory || []));
       renderCompanyTable(currentCompanyFilter || 'all');
       renderSupplierTable(currentSupplierFilter || 'all');
       renderCompanyInputTable();
