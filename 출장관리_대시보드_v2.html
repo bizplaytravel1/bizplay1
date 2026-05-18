@@ -1649,6 +1649,15 @@
           <option value="12월">12월</option>
         </select>
         <div style="width:1px;height:24px;background:var(--border)"></div>
+        <span class="filter-label">정산구분:</span>
+        <select class="form-select" id="cs-settle" onchange="applyCompanyFilters()" style="width:110px;padding:6px 10px;font-size:12px">
+          <option value="all" selected>전체</option>
+          <option value="정산">정산</option>
+          <option value="미정산">미정산</option>
+          <option value="후정산">후정산</option>
+          <option value="국책/조합">국책/조합</option>
+        </select>
+        <div style="width:1px;height:24px;background:var(--border)"></div>
         <span class="filter-label">기업체:</span>
         <button class="pill active" onclick="filterCompany(this,'all')">전체</button>
         <button class="pill" onclick="filterCompany(this,'포스코DX')">포스코DX</button>
@@ -1818,11 +1827,11 @@
             <thead>
               <tr>
                 <th>구분</th>
-                <th>포스코DX<br><small style="color:var(--muted);font-weight:400">정산/미정산</small></th>
-                <th>세아창원특수강<br><small style="color:var(--muted);font-weight:400">정산/미정산</small></th>
-                <th>현대자동차<br><small style="color:var(--muted);font-weight:400">정산/미정산</small></th>
-                <th>기아복지몰<br><small style="color:var(--muted);font-weight:400">합계</small></th>
-                <th>기아 여가선용몰<br><small style="color:var(--muted);font-weight:400">합계</small></th>
+                <th>포스코DX<br><small style="color:var(--muted);font-weight:400">정산</small></th>
+                <th>세아창원특수강<br><small style="color:var(--muted);font-weight:400">정산</small></th>
+                <th>현대자동차<br><small style="color:var(--muted);font-weight:400">정산</small></th>
+                <th>기아복지몰<br><small style="color:var(--muted);font-weight:400">정산</small></th>
+                <th>기아 여가선용몰<br><small style="color:var(--muted);font-weight:400">정산</small></th>
                 <th>합계</th>
               </tr>
             </thead>
@@ -3377,7 +3386,7 @@ async function runExport() {
 
 // ===================== CHARTS =====================
 
-// 막대 위에 숫자만 표시하는 플러그인
+// 막대 위에 숫자 표시 (라벨 박스 + 진한 텍스트로 시인성 강화)
 const BarValuePlugin = {
   id: 'barValueLabels',
   _printMode: false,
@@ -3387,12 +3396,37 @@ const BarValuePlugin = {
     chart.getDatasetMeta(0).data.forEach((bar, i) => {
       const val = data.datasets[0].data[i];
       if (!val) return;
+      const label = val.toLocaleString();
+      const x = bar.x;
+      const y = bar.y - 6;
+
       ctx.save();
-      ctx.fillStyle = BarValuePlugin._printMode ? '#111111' : '#e2e8f0';
-      ctx.font = '600 10px JetBrains Mono, monospace';
+      ctx.font = 'bold 11px JetBrains Mono, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(val.toLocaleString(), bar.x, bar.y - 4);
+
+      // 라벨 박스 (인쇄 모드가 아닐 때만)
+      if (!BarValuePlugin._printMode) {
+        const tw = ctx.measureText(label).width;
+        const bw = tw + 10;
+        const bh = 17;
+        const bx = x - bw / 2;
+        const by = y - bh;
+
+        // 박스 배경: 옅은 파랑 + 보더
+        ctx.fillStyle = 'rgba(219, 234, 254, 0.95)';
+        ctx.strokeStyle = 'rgba(37, 99, 235, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 4);
+        else ctx.rect(bx, by, bw, bh);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // 텍스트: 진한 슬레이트 (라이트 모드) / 검정 (인쇄)
+      ctx.fillStyle = BarValuePlugin._printMode ? '#111111' : '#1e40af';
+      ctx.fillText(label, x, y);
       ctx.restore();
     });
   }
@@ -3444,7 +3478,7 @@ function initCharts() {
     data: { labels: Object.keys(catTotals), datasets: [{ label:'금액', data: Object.values(catTotals),
       backgroundColor: ['#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b','#ef4444','#a78bfa'],
       borderRadius: 6, borderSkipped: false }] },
-    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 28 } },
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 34 } },
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: ctx => `  ${ctx.raw.toLocaleString()}원  (${((ctx.raw/catTotal)*100).toFixed(1)}%)` } } },
       scales: {
@@ -3723,6 +3757,7 @@ function getStatusLabel(s) { return s || '처리중'; }
 let currentCompanyFilter = 'all';
 let currentCompanyYear   = 'all';
 let currentCompanyMonth  = 'all';
+let currentCompanySettle = 'all';
 
 function filterCompany(el, val) {
   document.querySelectorAll('#company-status .pill').forEach(p => p.classList.remove('active'));
@@ -3734,6 +3769,8 @@ function filterCompany(el, val) {
 function applyCompanyFilters() {
   currentCompanyYear  = document.getElementById('cs-year').value;
   currentCompanyMonth = document.getElementById('cs-month').value;
+  const csSettleEl = document.getElementById('cs-settle');
+  if (csSettleEl) currentCompanySettle = csSettleEl.value;
   renderCompanyTable();
 }
 
@@ -3746,6 +3783,8 @@ function renderCompanyTable() {
   if (currentCompanyYear !== 'all') rows = rows.filter(r => r.year === currentCompanyYear);
   // 월 필터
   if (currentCompanyMonth !== 'all') rows = rows.filter(r => r.month === currentCompanyMonth);
+  // 정산구분 필터
+  if (currentCompanySettle !== 'all') rows = rows.filter(r => r.settleType === currentCompanySettle);
   // 기업체 필터
   if (currentCompanyFilter !== 'all') rows = rows.filter(r => r.company === currentCompanyFilter);
 
@@ -4010,10 +4049,11 @@ function renderInvoice() {
     </div>
   `;
 
-  // ─ 기업체 목록 테이블
+  // ─ 기업체 목록 테이블 (※ 미정산 행은 표시하지 않음 — 정산만 노출)
   const badge = { '정산':'badge-green', '미정산':'badge-red', '후정산':'badge-yellow', '국책/조합':'badge-purple' };
-  document.getElementById('invCompanyCount').textContent = allC.length + '건';
-  document.getElementById('invCompanyBody').innerHTML = allC.length ? allC.map(r => {
+  const allCSettled = allC.filter(r => r.settleType === '정산');
+  document.getElementById('invCompanyCount').textContent = allCSettled.length + '건';
+  document.getElementById('invCompanyBody').innerHTML = allCSettled.length ? allCSettled.map(r => {
     const total = rowTotal(r, catKeys);
     return `<tr>
       <td><strong>${r.company}</strong></td>
@@ -4040,7 +4080,7 @@ function renderInvoice() {
         </div>
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">해당 월 데이터가 없습니다</td></tr>`;
+  }).join('') : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">해당 월에 정산 데이터가 없습니다</td></tr>`;
 
   // ─ 공급사 목록 테이블
   const catColors = { '숙박':'badge-blue','항공':'badge-cyan','열차':'badge-purple','버스':'badge-green','택시':'badge-yellow','비자':'badge-red','렌터카':'badge-blue' };
@@ -4061,33 +4101,24 @@ function renderInvoice() {
     </tr>`;
   }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">해당 월 데이터가 없습니다</td></tr>`;
 
-  // ─ 집계 테이블
+  // ─ 집계 테이블 (※ 미정산 제외 — 정산만 노출)
   const cats = ['숙박','항공','SRT','KTX','버스','택시','비자'];
   const companies = ['포스코DX','세아창원특수강','현대자동차','기아복지몰','기아 여가선용몰'];
   const catMap = {};
-  allC.forEach(r => {
+  allC.filter(r => r.settleType === '정산').forEach(r => {
     cats.forEach(cat => {
       if(!catMap[cat]) catMap[cat] = {};
-      if(!catMap[cat][r.company]) catMap[cat][r.company] = { 정산:0, 미정산:0 };
-      if(r.settleType==='정산') catMap[cat][r.company].정산 += (r[cat]||0);
-      else catMap[cat][r.company].미정산 += (r[cat]||0);
+      if(!catMap[cat][r.company]) catMap[cat][r.company] = 0;
+      catMap[cat][r.company] += (r[cat]||0);
     });
   });
 
   document.getElementById('invoiceTable').innerHTML = cats.map(cat => {
     const cells = companies.map(co => {
-      const d = (catMap[cat]||{})[co] || { 정산:0, 미정산:0 };
-      if(co === '기아복지몰' || co === '기아 여가선용몰') {
-        const tot = d.정산 + d.미정산;
-        return `<td class="num">${tot ? tot.toLocaleString() : '-'}</td>`;
-      }
-      return `<td class="num" style="font-size:11px">
-        <span style="color:var(--success)">${d.정산 ? d.정산.toLocaleString() : '-'}</span>
-        <span style="color:var(--muted)"> / </span>
-        <span style="color:var(--danger)">${d.미정산 ? d.미정산.toLocaleString() : '-'}</span>
-      </td>`;
+      const v = (catMap[cat]||{})[co] || 0;
+      return `<td class="num"><span style="color:var(--success)">${v ? v.toLocaleString() : '-'}</span></td>`;
     }).join('');
-    const rowTotal2 = Object.values(catMap[cat]||{}).reduce((s,v)=>s+v.정산+v.미정산,0);
+    const rowTotal2 = Object.values(catMap[cat]||{}).reduce((s,v)=>s+v,0);
     return `<tr>
       <td><strong>${cat}</strong></td>
       ${cells}
